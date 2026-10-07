@@ -50,3 +50,6 @@ Thumbs.db
 
 # Vivado runtime leftovers
 dfx_runtime.txt
+
+# Large generated test vectors (regenerate with ml/export.py)
+ml/export/vec_1000_*

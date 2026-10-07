@@ -102,3 +102,21 @@ A: All 10 outputs share the same scale, so the largest int32 accumulator is the 
 
 **Q: Why did you write QUANTIZATION.md before the RTL?**
 A: It is the specification. The Python golden model and the hardware both implement it, so when they disagree I know which one to fix. It also forced me to check the bit widths (the largest accumulator needs 25 bits signed), which decides the hardware datapath width.
+
+## Training and the golden model (Phase 3)
+
+- **Data augmentation**: random shift, rotation, scale, stroke thickness and background changes on the training images, so the CNN also works on pictures that are not clean MNIST (the "domain gap" of a live screen).
+- **Domain gap**: the difference between the training data (clean MNIST) and the real data (our live ROI). We measure it separately instead of hiding it in one number.
+- **Calibration**: running the float model over many images to find the largest value of each layer's output, which sets the activation scale.
+- **Golden model**: `ml/golden_int.py`, integer-only. The hardware must give the same bits.
+- **Independent cross-check**: `ml/check_golden.py` implements the same spec a second way (PyTorch) and requires identical layer outputs. Two separate implementations agreeing makes a shared bug very unlikely.
+- **Test vectors**: input image + every layer output from the golden model, stored as `.mem` files. The Phase 5 testbenches read them and compare.
+
+**Q: Your int8 model has 98.25 % and the float model 98.24 %. Did quantization really lose nothing?**
+A: On the 10,000 MNIST test images, int8 and float give the same answer for 99.9 % of images; the 0.01 % difference is noise (a few images flip in both directions). I also checked that no activation saturates at 255, so the activation scale is not clipping anything.
+
+**Q: How do you know the golden model itself is right?**
+A: I wrote a second, independent integer implementation with PyTorch's conv/pool/linear functions (exact, because all values stay far below 2^53) and require every layer output to be bit-identical on 2,000 test images. And the accuracy matches the float model, so it computes the right thing, not just a consistent thing.
+
+**Q: Why do you report MNIST accuracy and "real" accuracy separately?**
+A: A model can score 98 % on MNIST and fail on the live picture because the input looks different. A single mixed number would hide that. The report keeps clean MNIST, a synthetic stress test, and (later) real captured ROIs and on-board results as separate rows.

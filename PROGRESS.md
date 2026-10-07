@@ -61,6 +61,18 @@ Phase 1 - HDMI pass-through: **IN PROGRESS**. Done: build (timing met), HDMI inp
 - Build: timing met **WNS +0.870 ns, WHS +0.059 ns**, 732 LUT (4.2%), 870 FF (2.5%), **0 critical warnings**.
 - **Board test pending** (needs 2 HDMI cables): expect laptop screen + green box + green "7"; sw0 gray; sw1 hides.
 
+## Phase 3 - ML golden model (2026-10-07)
+- Spec: `docs/QUANTIZATION.md`. Code in `ml/`: `model.py`, `data_utils.py` (augmentation), `train.py`,
+  `quantize.py`, `golden_int.py` (integer-only), `check_golden.py`, `evaluate.py`, `export.py`.
+- Trained 12 epochs (seed 0, about 3.5 min on CPU): float 98.24 % on clean MNIST test (10,000 images).
+- Quantized: **integer golden model 98.25 %** (same prediction as float on 99.90 % of images).
+  Requant constants M1=20725/S1=23, M2=20000/S2=23, Mc=26807/Sc=21. No activation saturates; accumulators < 2^24.
+- `ml/check_golden.py`: independent PyTorch integer implementation vs golden model: **bit-exact on all layers, 2,000 images**.
+- Augmented-test stress row: float 90.88 % / int 90.76 % (synthetic, NOT real camera data). Real ROI captures come in Phase 4.
+- Export in `ml/export/`: weights `.mem`, `quant_params.svh`, full layer vectors for 20 images (committed),
+  1000-image vectors (git-ignored, run `ml/export.py` to regenerate). Report: `ml/reports/accuracy.md`.
+- Reproduce: `.venv\Scripts\python.exe ml/train.py; ml/quantize.py; ml/check_golden.py; ml/evaluate.py; ml/export.py`.
+
 ## In progress
 - Board test with 2 HDMI cables = Phase 1 milestone (pass-through) + Phase 2 milestone (overlay) together.
 
