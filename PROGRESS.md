@@ -46,7 +46,16 @@ Phase 1 - HDMI pass-through: **IN PROGRESS** (hardware built, waiting for board 
 - Output half of the pass-through (needs a second HDMI cable).
 
 ## Open problems
-1. **Vitis 2025.1 cannot create the platform from our XSA.**
+1. **ROOT CAUSE FOUND (2026-10-07 12:40): the ARM toolchain is not installed.**
+   `C:\Xilinx\2025.1\gnu` has only `microblaze` and `riscv`; no `arm-none-eabi-gcc.exe` anywhere in
+   `C:\Xilinx\2025.1`. Also `vitis.bat` adds `Vivado\bin` (lopper, sdtgen, xsdb) to PATH only for the old
+   install layout, so `scripts/build_sw.py` now adds it itself -> Vitis now prints "SDT generated successfully".
+   Domain/BSP creation then fails: pyesw `create_bsp.py` (run by hand) says
+   "CMAKE_C_COMPILER arm-none-eabi-gcc ... was not found". Vitis only says "Application error processing RPC".
+   **Fix needed (user):** add the Zynq-7000 / ARM Cortex-A9 embedded toolchain with the AMD installer
+   ("Add Design Tools or Devices 2025.1"), then re-run `vitis.bat -s scripts/build_sw.py hello` (from PowerShell).
+   Earlier history of this problem:
+   **Vitis 2025.1 cannot create the platform from our XSA.**
    Symptom: `create_platform_component` -> "Error in generating SDT for given XSA".
    Tried: (a) XSA copy in a path without spaces, (b) generate_dtb=False + no_boot_bsp=True,
    (c) running Vitis' own SDT script (`Vitis/vitis-server/scripts/platformutil.tcl`) with
