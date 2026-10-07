@@ -46,7 +46,12 @@ Phase 1 - HDMI pass-through: **IN PROGRESS** (hardware built, waiting for board 
 - Output half of the pass-through (needs a second HDMI cable).
 
 ## Open problems
-1. **ROOT CAUSE FOUND (2026-10-07 12:40): the ARM toolchain is not installed.**
+1. **SOLVED (2026-10-07):** the installed edition was "Vivado ML Standard" (Vivado only, partial Vitis).
+   User upgraded with `C:\Xilinx\.xinstall\2025.1\xsetup.exe` to **Vitis Unified Software Platform** +
+   SoCs/Zynq-7000 (8 GB download). Now `gnu\aarch32` exists and `vitis.bat -s scripts/build_sw.py hello`
+   builds `build/sw/hello.elf` (and an FSBL). Run Vitis/xsdb from PowerShell, not Git Bash.
+   History:
+   **ROOT CAUSE FOUND (2026-10-07 12:40): the ARM toolchain is not installed.**
    `C:\Xilinx\2025.1\gnu` has only `microblaze` and `riscv`; no `arm-none-eabi-gcc.exe` anywhere in
    `C:\Xilinx\2025.1`. Also `vitis.bat` adds `Vivado\bin` (lopper, sdtgen, xsdb) to PATH only for the old
    install layout, so `scripts/build_sw.py` now adds it itself -> Vitis now prints "SDT generated successfully".

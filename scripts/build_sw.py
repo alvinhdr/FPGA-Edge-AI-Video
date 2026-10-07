@@ -13,10 +13,12 @@
 #   - The Vitis workspace is OUTSIDE the repo, in ~/fpga_ws/fpga-edge-ai-video,
 #     because the repo path contains spaces and the Vitis make/cmake flow does not
 #     handle spaces well. Sources are copied (imported) from sw/<app_name>/.
-#   - vitis.bat only adds Vivado\bin to PATH for the OLD install layout
-#     (C:\Xilinx\Vivado\2025.1). With the 2025.1 layout (C:\Xilinx\2025.1\Vivado) the
-#     tools there (lopper, sdtgen, xsdb) are not found, and platform creation fails with
-#     "Error in generating SDT". This script adds Vivado\bin to PATH itself.
+#   - Needs the FULL "Vitis Unified Software Platform" edition with Zynq-7000 (ARM
+#     toolchain in C:\Xilinx\2025.1\gnu\aarch32, lopper/sdtgen in Vitis\bin). With only
+#     "Vivado ML Standard" installed, platform creation fails with the vague message
+#     "Error in generating SDT" (full story in PROGRESS.md / HANDOVER.md).
+#   - Vivado\bin is also added to PATH (harmless; vitis.bat only does it for the old
+#     C:\Xilinx\Vivado\<ver> install layout).
 #   - The XSA is copied to a path without spaces before Vitis reads it.
 #
 # Output: build/sw/<app_name>.elf and build/hw/ps7_init.tcl (for scripts/program.tcl)
