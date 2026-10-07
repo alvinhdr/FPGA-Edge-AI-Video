@@ -1,0 +1,21 @@
+{
+  "images": 10000,
+  "hw_accuracy_percent": 98.25,
+  "hw_correct": 9825,
+  "golden_accuracy_percent": 98.25,
+  "hw_vs_golden_accumulators_exact": 10000,
+  "hw_vs_golden_digit_conf_exact": 10000,
+  "arm_c_vs_golden_digit_conf_exact": 10000,
+  "arm_c_vs_hw_accumulators_exact": 10000,
+  "cnn_cycles_min": 23965,
+  "cnn_cycles_max": 23965,
+  "cnn_us_at_100mhz": 239.65,
+  "arm_timer_hz": 333333343,
+  "arm_c_compiled_optimized": 1,
+  "arm_c_us_mean": 2236.2111572498766,
+  "arm_c_us_min": 2229.485935344908,
+  "arm_c_us_max": 2241.6689349916005,
+  "arm_driving_hw_us_mean": 381.3233505416228,
+  "speedup_cnn_only": 9.331154422073343,
+  "speedup_arm_driven": 5.8643436182799045
+}

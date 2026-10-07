@@ -6,10 +6,13 @@
 #
 # Usage (from the repo root):
 #   vivado -mode batch -nojournal -log build/vivado_build.log \
-#          -source scripts/build_hw.tcl -tclargs [stage]
+#          -source scripts/build_hw.tcl -tclargs [stage] [P]
 #
 #   stage = project   : create project + IPs + block design only (fast check)
 #           all       : project + synthesis + implementation + bitstream + XSA (default)
+#   P     = number of CNN MACs (1, 2, 4, 8, 16), default 8 (the demo). Builds with P != 8
+#           go to build/p<P>/ (own project, bitstream, reports) for the Phase 7
+#           speed-vs-area table, so the demo build in build/ is never overwritten.
 #
 # Outputs (all in build/, which is git-ignored):
 #   build/vivado/                Vivado project
@@ -19,12 +22,14 @@
 # =============================================================================
 
 set stage [expr {[llength $argv] > 0 ? [lindex $argv 0] : "all"}]
+set cnn_p [expr {[llength $argv] > 1 ? [lindex $argv 1] : 8}]
+if {$cnn_p ni {1 2 4 8 16}} { error "P must be 1, 2, 4, 8 or 16 (got $cnn_p)" }
 
 # ---------------------------------------------------------------------------
 # Paths and settings
 # ---------------------------------------------------------------------------
 set root_dir   [file normalize [file join [file dirname [info script]] ..]]
-set build_dir  [file join $root_dir build]
+set build_dir  [expr {$cnn_p == 8 ? [file join $root_dir build] : [file join $root_dir build p$cnn_p]}]
 set proj_dir   [file join $build_dir vivado]
 set rpt_dir    [file join $build_dir reports]
 set proj_name  edge_ai_video
@@ -183,10 +188,10 @@ add_files -norecurse [list $wrapper]
 add_files -norecurse [glob [file join $root_dir rtl *.sv]]
 # ROM contents (font) read with $readmemb by rtl/font_rom.sv
 add_files -norecurse [glob [file join $root_dir rtl *.mem]]
-# CNN: generated requant constants package + weight/bias ROMs for P = 8 (from ml/export.py)
+# CNN: generated requant constants package + weight/bias ROMs for this P (from ml/export.py)
 add_files -norecurse [list [file join $root_dir ml export cnn_params_pkg.sv] \
-                           [file join $root_dir ml export wrom_p8.mem] \
-                           [file join $root_dir ml export brom_p8.mem]]
+                           [file join $root_dir ml export wrom_p$cnn_p.mem] \
+                           [file join $root_dir ml export brom_p$cnn_p.mem]]
 add_files -fileset constrs_1 -norecurse [glob [file join $root_dir constraints *.xdc]]
 # Read our XDC LAST: it refers to clocks that IP constraints create (clk_wiz input clock,
 # the PS clock clk_fpga_0). Read too early, those clocks do not exist yet (docs/TIMING.md #3).
@@ -194,6 +199,8 @@ set_property PROCESSING_ORDER LATE [get_files -of_objects [get_filesets constrs_
 # Clock groups refer to the PS clock, which only exists in implementation (see that file's header)
 set_property USED_IN_SYNTHESIS false [get_files -of_objects [get_filesets constrs_1] *_impl.xdc]
 set_property top top [current_fileset]
+set_property generic "CNN_P=$cnn_p" [current_fileset]
+puts "INFO: CNN_P = $cnn_p, outputs in $build_dir"
 update_compile_order -fileset sources_1
 
 if {$stage eq "project"} {

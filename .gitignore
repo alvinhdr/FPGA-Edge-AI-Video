@@ -53,3 +53,6 @@ dfx_runtime.txt
 
 # Large generated test vectors (regenerate with ml/export.py)
 ml/export/vec_1000_*
+
+# Vivado writes this into the folder it is started from
+clockInfo.txt

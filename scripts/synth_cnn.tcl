@@ -37,7 +37,9 @@ foreach P $plist {
     report_timing_summary -file [file join $rpt_dir cnn_p${P}_timing.rpt]
     report_utilization    -file [file join $rpt_dir cnn_p${P}_util.rpt]
     set wns  [get_property SLACK [get_timing_paths -max_paths 1 -nworst 1 -setup]]
-    set lut  [llength [get_cells -hier -filter {PRIMITIVE_GROUP == LUT}]]
+    # "Slice LUTs" from the utilization report (the standard number). Counting LUT cells
+    # gives more (1211 vs 888 at P=8), because two small LUTs can share one LUT6 site.
+    regexp {\|\s*Slice LUTs\s*\|\s*(\d+)} [report_utilization -return_string] -> lut
     set ff   [llength [get_cells -hier -filter {PRIMITIVE_GROUP == FLOP_LATCH}]]
     set bram [expr {[llength [get_cells -hier -filter {REF_NAME =~ RAMB36*}]] + 0.5 * [llength [get_cells -hier -filter {REF_NAME =~ RAMB18*}]]}]
     set dsp  [llength [get_cells -hier -filter {REF_NAME =~ DSP48*}]]

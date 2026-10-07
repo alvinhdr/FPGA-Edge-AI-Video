@@ -10,7 +10,9 @@
  *   j : injection self-test: the 20 MNIST test images built into this program are
  *       written to the inject RAM, classified by the hardware CNN, and compared
  *       bit-exactly with the golden model (digit + confidence)
- *   c : capture the 28x28 ROI ("ROI <1568 hex>"), for scripts/capture_roi.py
+ *   c : capture the 28x28 ROI + hardware CNN result ("ROI <1568 hex> HW <digit> <conf>"),
+ *       for scripts/capture_roi.py
+ *   f : frame-rate test (60 s): frames, inferences, skipped frames, fps
  *   w/a/z/d : move the ROI box up/left/down/right by 8 pixels   x : ROI back to the center
  *   i : toggle invert   t : toggle threshold   + / - : threshold +/- 8
  *   h : help
@@ -20,12 +22,16 @@
 #include "xparameters.h"
 #include "xuartps_hw.h"
 #include "sleep.h"
+#include "xiltimer.h"
 #include "edge_ai_regs.h"
 #include "mnist_test_images.h"
 
 #define ROI_X_CENTER 528
 #define ROI_Y_CENTER 248
 #define ROI_STEP     8
+
+/* Cortex-A9 global timer = CPU clock / 2 (Zynq-7000 TRM); started by the first sleep call. */
+#define TIMER_HZ     ((u32)(XPAR_CPU_CORE_CLOCK_FREQ_HZ / 2))
 
 extern void outbyte(char c);
 
@@ -68,8 +74,13 @@ static int wait_frames(u32 n)
     return 0;
 }
 
-/* ROI capture (same protocol as sw/roi_capture). The CNN is paused while the ARM
- * reads, because the CNN and the AXI readback share the ROI buffer's read port. */
+static u32 infer_injected(const unsigned char *img);
+
+/* ROI capture (same protocol as sw/roi_capture, plus the hardware result). The CNN is
+ * paused while the ARM reads, because the CNN and the AXI readback share the ROI
+ * buffer's read port. Then the captured image is classified by the hardware CNN
+ * through the inject RAM, so the PC gets the hardware's answer for EXACTLY this image:
+ * "ROI <1568 hex> HW <digit> <conf>". */
 static void capture(void)
 {
     static u8 buf[EAI_ROI_PIXELS];
@@ -84,11 +95,41 @@ static void capture(void)
         for (int i = 0; i < EAI_ROI_PIXELS; i++) buf[i] = (u8)eai_rd(EAI_ROI_DATA + 4u * (u32)i);
         if ((eai_rd(EAI_STATUS) & 1u) == bank_before) break;
     }
+    /* hardware CNN on exactly this image (still paused, inject mode = CNN reads the inject RAM) */
+    eai_wr(EAI_CTRL, ((ctrl | EAI_CTRL_FREEZE) & ~EAI_CTRL_CNN_ENABLE) | EAI_CTRL_INJECT);
+    u32 r = infer_injected(buf);
     eai_wr(EAI_CTRL, ctrl);
 
     xil_printf("ROI ");
     for (int i = 0; i < EAI_ROI_PIXELS; i++) put_hex_byte(buf[i]);
-    xil_printf("\r\n");
+    xil_printf(" HW %u %u\r\n", EAI_RESULT_DIGIT(r), EAI_RESULT_CONF(r));
+}
+
+/* Frame-rate test: count video frames (ROI captures) and CNN inferences for 60 s, timed
+ * with the ARM global timer. Each window starts and ends right after an inference
+ * finishes, so no inference is "in flight" when the counters are read. */
+static void fps_test(void)
+{
+    const u32 seconds = 60;
+    XTime t0, t1;
+    u32 f0, c0, f1, c1, n;
+
+    if (!wait_frames(2)) { xil_printf("ERR no frames (is HDMI video at 1280x720 coming in?)\r\n"); return; }
+    xil_printf("FPS test: %u s, do not touch the board...\r\n", seconds);
+    n = eai_rd(EAI_CNN_COUNT); while (eai_rd(EAI_CNN_COUNT) == n) { }
+    XTime_GetTime(&t0); f0 = eai_rd(EAI_FRAME_CNT); c0 = eai_rd(EAI_CNN_COUNT);
+    for (u32 s = 1; s <= seconds; s++) {
+        sleep(1);
+        if (s % 10 == 0) xil_printf("  %u s\r\n", s);
+    }
+    n = eai_rd(EAI_CNN_COUNT); while (eai_rd(EAI_CNN_COUNT) == n) { }
+    XTime_GetTime(&t1); f1 = eai_rd(EAI_FRAME_CNT); c1 = eai_rd(EAI_CNN_COUNT);
+
+    u32 frames = f1 - f0, infers = c1 - c0;
+    u64 ticks = t1 - t0;
+    u32 mfps = (u32)(((u64)frames * 1000u * TIMER_HZ + ticks / 2) / ticks);   /* frames/s x 1000 */
+    xil_printf("FPS frames=%u inferences=%u skipped=%d time_us=%u fps_x1000=%u\r\n",
+               frames, infers, (int)(frames - infers), (u32)(ticks / (TIMER_HZ / 1000000u)), mfps);
 }
 
 /* Classify one 28x28 image with the hardware CNN through the inject RAM. */
@@ -135,7 +176,7 @@ static void move_roi(int dx, int dy)
 
 static void help(void)
 {
-    xil_printf("commands: p=prediction s=status j=inject self-test c=capture w/a/z/d=move box x=center "
+    xil_printf("commands: p=prediction s=status j=inject self-test c=capture f=fps test w/a/z/d=move box x=center "
                "i=invert t=threshold +/-=threshold h=help\r\n");
 }
 
@@ -164,6 +205,7 @@ int main(void)
             case 's': print_status(); break;
             case 'j': inject_selftest(); break;
             case 'c': capture(); break;
+            case 'f': fps_test(); break;
             case 'w': move_roi(0, -ROI_STEP); print_status(); break;
             case 'a': move_roi(-ROI_STEP, 0); print_status(); break;
             case 'z': move_roi(0, ROI_STEP);  print_status(); break;

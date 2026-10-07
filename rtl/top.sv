@@ -26,7 +26,11 @@
 // =============================================================================
 `default_nettype none
 
-module top (
+module top #(
+    // Number of parallel MACs in the CNN (1, 2, 4, 8 or 16). Set by scripts/build_hw.tcl
+    // (second argument) for the Phase 7 speed-vs-area table; the demo uses 8.
+    parameter int CNN_P = 8
+) (
     // Board clock
     input  wire         sysclk,          // 125 MHz
 
@@ -328,7 +332,13 @@ module top (
 
     // Accelerator clock domain: AXI-Lite registers + CNN + inject RAM (rtl/ai_core.sv).
     // Only the low 16 address bits are decoded (64 KB window at 0x43C0_0000).
-    ai_core #(.P(8), .WROM_FILE("wrom_p8.mem"), .BROM_FILE("brom_p8.mem")) u_ai (
+    // Weight/bias ROM files for this P (written by ml/export.py)
+    localparam string CNN_WROM = (CNN_P == 1) ? "wrom_p1.mem" : (CNN_P == 2) ? "wrom_p2.mem" :
+                                 (CNN_P == 4) ? "wrom_p4.mem" : (CNN_P == 16) ? "wrom_p16.mem" : "wrom_p8.mem";
+    localparam string CNN_BROM = (CNN_P == 1) ? "brom_p1.mem" : (CNN_P == 2) ? "brom_p2.mem" :
+                                 (CNN_P == 4) ? "brom_p4.mem" : (CNN_P == 16) ? "brom_p16.mem" : "brom_p8.mem";
+
+    ai_core #(.P(CNN_P), .WROM_FILE(CNN_WROM), .BROM_FILE(CNN_BROM)) u_ai (
         .clk            (clk_acc),
         .rst_n          (rst_acc_n),
         .s_axi_awaddr   (axi_awaddr[15:0]),

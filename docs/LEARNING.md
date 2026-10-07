@@ -188,3 +188,26 @@ A: Windows said 1280x720, but the "active signal mode" was 1920x1080: the graphi
 
 **Q: How do you know the hardware on the board gives the same answer as in simulation?**
 A: The injection self-test: 20 MNIST images stored in the ARM program are sent to the FPGA, and the digit and confidence are compared with the golden model's values. On the board: 20/20 bit-exact.
+
+## Measurements and benchmarks (Phase 7)
+
+- **Baseline**: the thing you compare against. Here: the same integer CNN in plain C on the ARM Cortex-A9.
+- **Compiler optimization level** (`-O0`, `-O2`): how hard the compiler works to make fast code. `-O0` = none (easy debugging, slow code). A fair benchmark uses `-O2` or `-O3`. Vitis uses `-O0` by default — we changed it.
+- **Global timer**: a 64-bit counter inside the ARM that runs at half the CPU clock (333 MHz, 3 ns steps). Read it before and after some code to measure its time.
+- **Hardware cycle counter**: a counter in our RTL that counts clk_acc cycles from CNN start to done. Exact, and not affected by the ARM.
+- **End-to-end vs. compute-only time**: compute-only = only the CNN; end-to-end = everything the user waits for (here also moving the image over the bus). Always say which one a number is.
+- **Out-of-context (OOC) build**: building one module alone to measure its own size and speed.
+- **Design-space exploration**: building the same design with different parameter values (P = 1..16) to see the speed vs. area trade-off.
+- **Power estimate**: Vivado's calculation from the design and default switching rates — not a measurement with a meter. Say "estimate".
+
+**Q: How did you prove the hardware is correct on the real board, not only in simulation?**
+A: The ARM sent all 10,000 MNIST test images into the FPGA through a test RAM, ran the hardware CNN, and read back the digit, confidence and all 10 final accumulators. The PC compared them with the Python integer golden model: 10,000 of 10,000 were bit-exact, and the accuracy was 98.25 %, exactly the golden model's number.
+
+**Q: How much faster is your accelerator than the ARM?**
+A: 9.3 times for the CNN itself: 240 µs on the FPGA at 100 MHz with 8 MACs, against 2,236 µs for the same integer model in C on the 667 MHz Cortex-A9, compiled with -O2. If you count moving the image over the AXI-Lite bus from the ARM, it is 5.9 times; in the live video path that transfer does not exist, because the image is already in the FPGA. The ARM code is plain C without NEON, so a hand-optimized SIMD version would close part of the gap — I say that openly.
+
+**Q: Why did you not just pick P = 16, the fastest?**
+A: From 8 to 16 MACs the speed only goes up 1.36×, but the DSPs almost double (10 → 18). The first layer has only 8 output channels, so half of 16 lanes would be idle there, and every pooled position has a fixed overhead. With P = 8 the CNN already needs only 1.4 % of a video frame.
+
+**Q: You found a bug in your own benchmark. What was it?**
+A: Two. First, the ARM timer always read 0: the board support library starts the global timer only on the first sleep call, and my benchmark never slept — I found it by reading the library source. Second, Vitis compiles with -O0 by default, which would have made the ARM much slower and my speedup look better than it really is. I set -O2 and print in the benchmark whether the code was optimized.

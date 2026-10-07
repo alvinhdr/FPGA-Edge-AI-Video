@@ -24,9 +24,11 @@
 # Output: build/sw/<app_name>.elf and build/hw/ps7_init.tcl (for scripts/program.tcl)
 # =============================================================================
 import os
+import re
 import sys
 import glob
 import stat
+import subprocess
 import shutil
 import zipfile
 
@@ -86,7 +88,25 @@ try:
     platform = client.create_platform_component(name=PLATFORM, hw_design=xsa_copy,
                                                 os="standalone", cpu="ps7_cortexa9_0",
                                                 domain_name=DOMAIN)
-    platform.build()
+    try:
+        platform.build()
+    except Exception as e:
+        # Vitis 2025.1 sometimes builds the BSP without its final CMake configure pass, so
+        # the driver headers (xscugic.h, ...) are never copied into the BSP include folder
+        # and the build stops with the vague "Application error processing RPC".
+        # Fix: re-run CMake configure + ninja in each BSP build folder, then build again.
+        print(f"WARNING: platform build failed ({str(e).splitlines()[0]}); re-configuring BSPs and retrying")
+        tools = [os.path.join(os.path.dirname(XILINX), "gnu", "aarch32", "nt", "gcc-arm-none-eabi", "bin"),
+                 os.path.join(XILINX, "bin"),
+                 os.path.join(os.path.dirname(XILINX), "tps", "win64", "cmake-3.24.2", "bin")]
+        env = dict(os.environ, PATH=os.pathsep.join(tools) + os.pathsep + os.environ.get("PATH", ""))
+        for gen in glob.glob(os.path.join(WORKSPACE, PLATFORM, "**", "build_configs", "gen_bsp"), recursive=True):
+            for cmd in (["cmake", "."], ["ninja"]):
+                r = subprocess.run(cmd, cwd=gen, env=env, capture_output=True, text=True, shell=True)
+                if r.returncode != 0:
+                    sys.exit(f"ERROR: {' '.join(cmd)} failed in {gen}:\n{r.stdout[-2000:]}{r.stderr[-2000:]}")
+            print(f"INFO: BSP rebuilt by hand: {gen}")
+        platform.build()
 
     xpfm = client.find_platform_in_repos(PLATFORM)
     app = client.create_app_component(name=APP_NAME, platform=xpfm, domain=DOMAIN)
@@ -97,6 +117,19 @@ try:
     common = [os.path.basename(p) for p in glob.glob(os.path.join(common_dir, "*.h"))]
     if common:
         app.import_files(from_loc=common_dir, files=common, dest_dir_in_cmp="src")
+    # Optimization: Vitis defaults to -O0 (no optimization). The software CNN baseline in
+    # Phase 7 must be compiled fairly, so every app is built with -O2 (override: EAI_OPT=-O3).
+    opt = os.environ.get("EAI_OPT", "-O2")
+    cfg = os.path.join(WORKSPACE, APP_NAME, "src", "UserConfig.cmake")
+    with open(cfg) as f:
+        txt = f.read()
+    new_txt = re.sub(r"set\(USER_COMPILE_OPTIMIZATION_LEVEL [^)]*\)",
+                     f"set(USER_COMPILE_OPTIMIZATION_LEVEL {opt})", txt)
+    if new_txt == txt and opt != "-O0":
+        sys.exit("ERROR: could not set the optimization level in " + cfg)
+    with open(cfg, "w") as f:
+        f.write(new_txt)
+    print(f"INFO: compiler optimization level {opt}")
     app.build()
 
     # 4. Copy the ELF to build/sw/
