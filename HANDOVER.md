@@ -30,7 +30,7 @@ account after this; **always check `PROGRESS.md` and `git log` for anything newe
 | 3 ML golden model | DONE (tag `phase-3-done`) | float 98.24 %, int8 golden 98.25 % on MNIST test; independent PyTorch cross-check bit-exact (2,000 images) |
 | 4 ROI capture + CDC | DONE (tag `phase-4-done`) | sims pass; board (SD boot): AI view live, captures saved, first real capture 7 predicted correctly |
 | 5 CNN accelerator RTL | DONE (tag `phase-5-done`) | P=8: 1000/1000 images bit-exact vs golden, all layers bit-exact for P=1,2,4,8,16; 23,965 cycles = 240 us; OOC timing met @100 MHz (WNS +0.507 ns, 1211 LUT, 966 FF, 3.5 BRAM, 10 DSP) |
-| 6 Integration | not started | |
+| 6 Integration | **IN PROGRESS** (started 2026-10-07, planning) | |
 | 7 Benchmarks | not started | |
 | 8 Polish | not started | |
 

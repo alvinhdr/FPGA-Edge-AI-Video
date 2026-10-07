@@ -1,8 +1,8 @@
 # PROGRESS
 
 ## Current phase
-Phases 0-5 **DONE** (tags phase-0..5-done). Next: **Phase 6** (integrate CNN with ROI buffer + overlay, AXI-Lite,
-test-image injection, live demo).
+Phases 0-5 **DONE** (tags phase-0..5-done). **Phase 6 STARTED 2026-10-07** (integrate CNN with ROI buffer + overlay, AXI-Lite,
+test-image injection, live demo). Plan being presented to the user.
 
 ## Environment (checked 2026-10-07)
 - Board: **Digilent Zybo Z7-10** (XC7Z010-1CLG400C), confirmed by user
