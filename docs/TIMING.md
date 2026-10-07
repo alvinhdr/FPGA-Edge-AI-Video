@@ -35,3 +35,9 @@ family on `sysclk` and the asynchronous group covers all of it.
 **Lesson.** Read the inter-clock table in the timing report. A huge negative slack on a crossing
 you know is asynchronous usually means a constraint problem, not a logic problem. Never "fix" it
 by making logic faster.
+
+**Update (Phase 2).** Replacing the IP's clock still gave CRITICAL WARNINGs
+(`Constraints 18-1055/1056: Clock 'sys_clk_pin' completely overrides clock 'sysclk'`).
+Final fix: do not create any clock on `sysclk` in our XDC. The clk_wiz IP already creates the
+8.000 ns clock on its input, and our clock group refers to it by pin:
+`get_clocks -include_generated_clocks -of_objects [get_ports sysclk]`. One clock, no override.

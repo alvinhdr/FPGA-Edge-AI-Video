@@ -32,18 +32,18 @@ module pix_pos_counter
 
     localparam int GAP_W = $clog2(VBLANK_MIN + 1);
 
-    logic             de_q        = 1'b0;
     logic [GAP_W-1:0] gap_cnt_q   = '0;    // clocks since DE was last high
     logic             new_frame_q = 1'b1;  // next line is the first line of a frame
 
+    // o_vid.de is the DE of the previous clock, so (i_vid.de && !o_vid.de)
+    // marks the first pixel of a line.
     always_ff @(posedge clk_pix) begin
         o_vid <= i_vid;
-        de_q  <= i_vid.de;
         o_sof <= 1'b0;
 
         if (i_vid.de) begin
             gap_cnt_q <= '0;
-            if (!de_q) begin
+            if (!o_vid.de) begin
                 // First pixel of a new line
                 o_x <= '0;
                 if (new_frame_q) begin

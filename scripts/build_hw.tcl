@@ -101,6 +101,15 @@ set_property -dict [list \
 
 generate_target {instantiation_template synthesis} [get_ips]
 
+# dvi2rgb ships XDC files for its debug ILA cores. We build it with kDebug=false,
+# so those cores do not exist and the XDCs only give CRITICAL WARNINGs. Disable them.
+foreach f [get_files -quiet -of_objects [get_files [get_property IP_FILE [get_ips dvi2rgb_0]]] -filter {FILE_TYPE == XDC}] {
+    if {[string match -nocase "*ila*" $f]} {
+        set_property IS_ENABLED false $f
+        puts "INFO: disabled unused debug constraint file $f"
+    }
+}
+
 # Print the real port list of every IP (to check top.sv against it)
 foreach ip [get_ips] {
     set veo "[file rootname [get_property IP_FILE $ip]].veo"

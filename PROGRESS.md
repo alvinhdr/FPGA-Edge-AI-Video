@@ -49,8 +49,20 @@ Phase 1 - HDMI pass-through: **IN PROGRESS**. Done: build (timing met), HDMI inp
 - Board USB: FTDI "USB Serial Converter A/B". UART COM port number depends on the laptop USB port
   (COM16 on one port, **COM17** on another). PuTTY session `zybo`: serial, 115200, 8N1, no flow control.
 
+## Phase 2 (started 2026-10-07, before the Phase 1 TX test; agreed with the user because only the
+## board test with 2 HDMI cables is missing for Phase 1)
+- RTL: `video_pkg.sv` (R-B-G order, `video_t`, named colors), `pix_pos_counter.sv` (DE-based x/y, frame
+  detect by long DE-low gap), `rgb2gray.sv` ((77R+150G+29B)>>8), `font_rom.sv` + `font_digits_8x8.mem`,
+  `roi_overlay.sv` (3-px green frame OUTSIDE the 224x224 ROI), `digit_overlay.sv` (8x8 font x16 = 128x128),
+  `pixel_pipeline.sv` (4 stages, latency 4 clocks). `top.sv`: sw0 = gray view, sw1 = hide overlay, digit fixed 7.
+- Verification: `scripts/sim_pixel_pipeline.py` (xsim, run from PowerShell with `.venv`):
+  3 tests x 2 full 720p frames, bit-exact vs Python reference + sync timing check: **ALL PASS**.
+  Negative check done (wrong digit / ROI off by 1 px are detected). Images in `docs/images/phase2_sim_*.png`.
+- Build: timing met **WNS +0.870 ns, WHS +0.059 ns**, 732 LUT (4.2%), 870 FF (2.5%), **0 critical warnings**.
+- **Board test pending** (needs 2 HDMI cables): expect laptop screen + green box + green "7"; sw0 gray; sw1 hides.
+
 ## In progress
-- Output half of the pass-through (needs a second HDMI cable).
+- Board test with 2 HDMI cables = Phase 1 milestone (pass-through) + Phase 2 milestone (overlay) together.
 
 ## Open problems
 1. **SOLVED (2026-10-07):** the installed edition was "Vivado ML Standard" (Vivado only, partial Vitis).
@@ -80,7 +92,7 @@ Phase 1 - HDMI pass-through: **IN PROGRESS**. Done: build (timing met), HDMI inp
    and Digilent board preset negative DQS-to-CLK delays (PSU-1..4).
 
 ## Next step
-1. With two HDMI cables: laptop -> HDMI RX, HDMI TX -> monitor. Run from PowerShell (Git Bash gives
+1. With two HDMI cables: laptop -> HDMI RX, HDMI TX -> monitor (Phase 2 bitstream already built). Run from PowerShell (Git Bash gives
    "Access is denied"): `& "C:\Xilinx\2025.1\Vivado\bin\xsdb.bat" scripts/program.tcl bit`, check the monitor.
 2. Fix problem 1 (Vitis platform), then `vitis.bat -s scripts/build_sw.py hello` and
    `xsdb.bat scripts/program.tcl all hello`, check PuTTY (115200 baud).

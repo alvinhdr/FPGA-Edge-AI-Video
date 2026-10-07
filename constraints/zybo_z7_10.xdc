@@ -14,9 +14,9 @@
 ## 125 MHz board clock (from the Ethernet PHY, always running)
 ## ---------------------------------------------------------------------------
 set_property -dict { PACKAGE_PIN K17   IOSTANDARD LVCMOS33 } [get_ports { sysclk }]; #IO_L12P_T1_MRCC_35 Sch=sysclk
-## No -add: this definition REPLACES the one inside the clk_wiz IP, so there is
-## only one clock on this pin (see docs/TIMING.md #2).
-create_clock -name sys_clk_pin -period 8.000 -waveform {0 4} [get_ports { sysclk }]
+## The 8.000 ns clock on this pin is created by the clk_wiz_ref IP's own XDC
+## (clk_wiz input = 125 MHz). We do NOT create a second one here: two clocks on one
+## pin caused a false timing failure (docs/TIMING.md #2). Below we refer to it by pin.
 
 ## ---------------------------------------------------------------------------
 ## LEDs (debug status)
@@ -70,7 +70,7 @@ set_property -dict { PACKAGE_PIN B19   IOSTANDARD TMDS_33  } [get_ports { hdmi_t
 ## synchronizer (inside the Digilent IP, or cdc_sync_2ff in our RTL).
 ## ---------------------------------------------------------------------------
 set_clock_groups -asynchronous \
-    -group [get_clocks -include_generated_clocks sys_clk_pin] \
+    -group [get_clocks -include_generated_clocks -of_objects [get_ports sysclk]] \
     -group [get_clocks -include_generated_clocks hdmi_rx_clk]
 
 ## Slow, human-speed I/O: no timing requirement (inputs are synchronized in RTL).
