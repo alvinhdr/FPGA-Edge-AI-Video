@@ -80,3 +80,25 @@ A: The pixels inside the ROI are the AI's input. If the green frame were inside,
 
 **Q: Why must the timing signals go through the same pipeline registers as the pixel data?**
 A: If the pixel data is delayed by 4 clocks but DE/HSYNC/VSYNC are not, every pixel is drawn 4 positions off and the picture shifts or tears. Passing them together (one struct) keeps them aligned.
+
+## Quantization (Phase 3)
+
+- **Quantization**: storing numbers as small integers plus a scale: `real = scale × integer`. Our weights are int8 (−127..127), activations uint8 (0..255).
+- **Scale / zero point**: the scale says how big one integer step is. The zero point is the integer that means real 0. We use zero point 0 everywhere, so the hardware needs no correction terms.
+- **Symmetric quantization**: the range is centered on 0 (−127..127), so the zero point is 0.
+- **Per-tensor**: one scale for a whole layer's weights (simplest). Per-channel = one scale per filter (more accurate, stretch goal).
+- **PTQ (post-training quantization)**: train in float, then convert to integers. **QAT** = quantization-aware training (simulate the integers during training), used only if PTQ loses too much accuracy.
+- **Requantization**: turning a big int32 accumulator back into uint8 for the next layer: `(acc × M + 2^(S−1)) >> S`, then clamp to 0..255. `M` and `S` together mean "multiply by a real number smaller than 1", using only an integer multiply and a shift.
+- **Accumulator**: the running sum of products in a MAC (multiply-accumulate). int8 × uint8 products summed over many inputs need ~25 bits.
+
+**Q: Why is ReLU free in your design?**
+A: After requantization I clamp the result to 0..255. Clamping at 0 is exactly ReLU, so there is no separate ReLU hardware.
+
+**Q: Why can max-pooling work directly on the uint8 values?**
+A: All four values in the window share one scale, and requantization is monotonic (a bigger accumulator never gives a smaller output). So the largest integer is also the largest real value.
+
+**Q: Why no requantization after the last layer?**
+A: All 10 outputs share the same scale, so the largest int32 accumulator is the largest logit. The argmax only needs to compare them.
+
+**Q: Why did you write QUANTIZATION.md before the RTL?**
+A: It is the specification. The Python golden model and the hardware both implement it, so when they disagree I know which one to fix. It also forced me to check the bit widths (the largest accumulator needs 25 bits signed), which decides the hardware datapath width.
