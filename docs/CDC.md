@@ -27,7 +27,9 @@ paths between them. That is only safe because every crossing below uses a synchr
 | 3 | `pix_locked` → `rgb2dvi.aRst_n` | `clk_pix` → `rgb2dvi` internal clocks | async reset | Reset synchronizer inside `rgb2dvi` (`SyncAsyncReset`) | Digilent IP |
 | 4 | internal lock / reset signals | `clk_ref` ↔ `clk_pix` | 1-bit | `SyncAsync` / `SyncBase` modules inside `dvi2rgb` (false paths in the IP's own XDC) | Digilent IP |
 
-LED outputs and `hdmi_rx_hpd` are slow, human-speed signals: they have a false path in the XDC.
+| 5 | `sw[0]` (gray view), `sw[1]` (hide overlay) | board switch (no clock) → `clk_pix` | 1-bit level | `cdc_sync_2ff` | `rtl/top.sv` (`u_sync_sw0`, `u_sync_sw1`) |
+
+LED outputs, `hdmi_rx_hpd` and the switch inputs are slow, human-speed signals: they have a false path in the XDC.
 
 ## Planned (later phases)
 - ROI buffer: dual-port BRAM, write port on `clk_pix`, read port on `clk_acc`.

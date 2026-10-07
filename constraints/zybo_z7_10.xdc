@@ -27,6 +27,12 @@ set_property -dict { PACKAGE_PIN G14   IOSTANDARD LVCMOS33 } [get_ports { led[2]
 set_property -dict { PACKAGE_PIN D18   IOSTANDARD LVCMOS33 } [get_ports { led[3] }]; #IO_L3N_T0_DQS_AD1N_35 Sch=led[3]
 
 ## ---------------------------------------------------------------------------
+## Switches (sw[0] = gray view, sw[1] = hide overlay)
+## ---------------------------------------------------------------------------
+set_property -dict { PACKAGE_PIN G15   IOSTANDARD LVCMOS33 } [get_ports { sw[0] }]; #IO_L19N_T3_VREF_35 Sch=sw[0]
+set_property -dict { PACKAGE_PIN P15   IOSTANDARD LVCMOS33 } [get_ports { sw[1] }]; #IO_L24P_T3_34 Sch=sw[1]
+
+## ---------------------------------------------------------------------------
 ## HDMI RX (sink / input port)
 ## ---------------------------------------------------------------------------
 set_property -dict { PACKAGE_PIN W19   IOSTANDARD LVCMOS33 } [get_ports { hdmi_rx_hpd }];   #IO_L22N_T3_34 Sch=hdmi_rx_hpd
@@ -67,8 +73,9 @@ set_clock_groups -asynchronous \
     -group [get_clocks -include_generated_clocks sys_clk_pin] \
     -group [get_clocks -include_generated_clocks hdmi_rx_clk]
 
-## Slow, human-speed outputs: no timing requirement.
-set_false_path -to [get_ports { led[*] hdmi_rx_hpd }]
+## Slow, human-speed I/O: no timing requirement (inputs are synchronized in RTL).
+set_false_path -to   [get_ports { led[*] hdmi_rx_hpd }]
+set_false_path -from [get_ports { sw[*] }]
 ## DDC is slow I2C (100 kHz) handled by the EDID emulator inside dvi2rgb.
 set_false_path -from [get_ports { hdmi_rx_scl hdmi_rx_sda }]
 set_false_path -to   [get_ports { hdmi_rx_scl hdmi_rx_sda }]

@@ -2,11 +2,12 @@
 // File   : top.sv
 // Project: Real-Time Edge AI Video Processor on FPGA
 // Board  : Digilent Zybo Z7-10
-// Purpose: Top level. Phase 1 = HDMI pass-through.
+// Purpose: Top level. Phase 2 = HDMI pass-through + pixel pipeline (overlay, gray).
 //
-//   Laptop --HDMI--> dvi2rgb --(RGB + sync, clk_pix 74.25 MHz)--> rgb2dvi --HDMI--> Monitor
+//   Laptop --HDMI--> dvi2rgb --(RGB + sync, clk_pix 74.25 MHz)--> pixel_pipeline
+//                                                        --> rgb2dvi --HDMI--> Monitor
 //
-//   - No frame buffer: pixels go straight from input to output.
+//   - No frame buffer: pixels stream through with a 4-clock pipeline delay.
 //   - clk_ref (200 MHz) is made from the 125 MHz board clock. dvi2rgb needs it
 //     for its input delay calibration (IDELAYCTRL) and for the EDID emulator.
 //   - The ARM (PS) is inside ps_bd (block design). In Phase 1 it only runs the
@@ -17,6 +18,10 @@
 //   led[1] on     : 200 MHz reference clock is locked
 //   led[2] on     : HDMI input is locked (dvi2rgb pLocked)
 //   led[3] blinks : pixel clock from the laptop is running
+//
+// Switches:
+//   sw[0] up : grayscale view of the whole picture
+//   sw[1] up : hide the ROI box and the digit
 // =============================================================================
 `default_nettype none
 
@@ -39,8 +44,9 @@ module top (
     output wire  [2:0]  hdmi_tx_p,
     output wire  [2:0]  hdmi_tx_n,
 
-    // Debug LEDs
+    // Debug LEDs and switches
     output wire  [3:0]  led,
+    input  wire  [1:0]  sw,
 
     // Zynq PS fixed pins (DDR memory and MIO). Connected to the ARM only.
     inout  wire  [14:0] DDR_addr,
@@ -134,18 +140,40 @@ module top (
     assign hdmi_rx_hpd = ref_locked;
 
     // -------------------------------------------------------------------------
-    // Pixel pipeline (Phase 1: straight wire, no processing)
-    // Phase 2+ will insert overlay / ROI modules here, all on clk_pix.
+    // Pixel pipeline (all on clk_pix): position counter, gray view, ROI box, digit
     // -------------------------------------------------------------------------
+    localparam logic [10:0] ROI_X0_DEFAULT = 11'd528;   // ROI = x 528..751 (center of 1280)
+    localparam logic [10:0] ROI_Y0_DEFAULT = 11'd248;   //       y 248..471 (center of 720)
+    localparam logic [3:0]  TEST_DIGIT     = 4'd7;      // fixed until the CNN gives a result
+
+    // Switches are asynchronous to clk_pix -> 2-flop synchronizers (docs/CDC.md)
+    logic sw_gray_pix, sw_hide_pix;
+    cdc_sync_2ff u_sync_sw0 (.clk_dst(clk_pix), .d_async(sw[0]), .q_sync(sw_gray_pix));
+    cdc_sync_2ff u_sync_sw1 (.clk_dst(clk_pix), .d_async(sw[1]), .q_sync(sw_hide_pix));
+
+    video_pkg::video_t rx_vid, tx_vid;
+    assign rx_vid = '{data: rx_data, de: rx_de, hs: rx_hsync, vs: rx_vsync};
+
+    pixel_pipeline u_pixel_pipeline (
+        .clk_pix      (clk_pix),
+        .i_vid        (rx_vid),
+        .o_vid        (tx_vid),
+        .i_gray_en    (sw_gray_pix),
+        .i_overlay_en (~sw_hide_pix),
+        .i_roi_x0     (ROI_X0_DEFAULT),
+        .i_roi_y0     (ROI_Y0_DEFAULT),
+        .i_digit      (TEST_DIGIT)
+    );
+
     logic [23:0] tx_data;
     logic        tx_de;
     logic        tx_hsync;
     logic        tx_vsync;
 
-    assign tx_data  = rx_data;
-    assign tx_de    = rx_de;
-    assign tx_hsync = rx_hsync;
-    assign tx_vsync = rx_vsync;
+    assign tx_data  = tx_vid.data;
+    assign tx_de    = tx_vid.de;
+    assign tx_hsync = tx_vid.hs;
+    assign tx_vsync = tx_vid.vs;
 
     // -------------------------------------------------------------------------
     // HDMI output: parallel RGB -> TMDS (Digilent rgb2dvi)

@@ -34,6 +34,18 @@ Simple explanations of every concept in this project. Updated after each module.
 - **ps7_init**: code that sets up the ARM side (clocks, DDR memory, pins). Normally the boot loader runs it; with JTAG we run it from xsdb.
 - **xsdb**: the command-line debugger. It programs the FPGA and loads C programs into the ARM over JTAG.
 
+- **Pipeline (stage)**: work split into steps, one register between each step. Each step takes 1 clock. A new pixel enters every clock, so throughput stays 1 pixel/clock; only the delay (latency) grows. Our pixel pipeline has 4 stages = 4 clocks = 54 ns.
+- **Latency**: how long one piece of data takes to go through. **Throughput**: how much data per second.
+- **Package (SystemVerilog)**: a file with shared types, constants and functions that many modules import. We keep the pixel color order in one place there.
+- **Packed struct**: a group of named signals stored as one bit vector, e.g. `video_t` = {data, de, hs, vs}. Easy to pass through pipeline registers together, so they stay aligned.
+- **ROM / $readmemb**: read-only memory. `$readmemb` loads its contents from a text file of binary numbers, both in simulation and in synthesis.
+- **Font ROM**: a table of small bitmaps. Each 8-bit row says which pixels of a character are on.
+- **Grayscale (luma)**: brightness of a color pixel. We use gray = (77R + 150G + 29B) >> 8, integer weights that sum to 256.
+- **Golden / reference model**: a simple program (here Python) that computes the expected output. The hardware output must match it exactly.
+- **Bit-exact**: every bit is the same, not just "close".
+- **Testbench**: simulation code that drives inputs into the design (the DUT, "device under test") and records or checks the outputs.
+- **Plusargs**: command-line options for a simulation (`+gray1`), read with `$value$plusargs`.
+
 ## Interview Q&A
 
 **Q: How does your HDMI pass-through work, and how big is the latency?**
@@ -56,3 +68,15 @@ A: It is the smaller Zynq board (17,600 LUTs, 80 DSPs). Designing a small CNN th
 
 **Q: How did you debug the HDMI input without a logic analyzer?**
 A: I put status signals on LEDs: PLL locked, HDMI input locked (dvi2rgb pLocked), and two blinking counters, one on the board clock and one on the recovered pixel clock. On the PC, Windows showed a new display named "DGL 720P CEA", which is the EDID my design sends. That proved HPD, EDID, and the TMDS lock separately, before connecting the output.
+
+**Q: How do you find the pixel position (x, y) in a video stream?**
+A: I count pixels while DE (data enable) is high: x resets at the start of each visible line, y goes up by one per line. I detect a new frame when DE stays low for a long time (vertical blanking is ~49,500 clocks, horizontal blanking only 370). I use DE instead of HSYNC/VSYNC because the sync polarity changes between video modes, but DE is always active-high.
+
+**Q: How did you verify the video pipeline?**
+A: Image-based simulation. A Python script turns a test picture into a real 720p stream with blanking and sync, the SystemVerilog testbench plays it through the design in xsim, and Python compares every output pixel of two full frames against a Python reference model, bit-exactly. It also checks that DE/HSYNC/VSYNC come out unchanged, delayed by exactly the pipeline latency. I also checked that the checker catches mistakes (a wrong digit or a box shifted by one pixel makes it fail).
+
+**Q: Why is the ROI box drawn outside the ROI?**
+A: The pixels inside the ROI are the AI's input. If the green frame were inside, it would become part of the picture the CNN sees and could confuse it.
+
+**Q: Why must the timing signals go through the same pipeline registers as the pixel data?**
+A: If the pixel data is delayed by 4 clocks but DE/HSYNC/VSYNC are not, every pixel is drawn 4 positions off and the picture shifts or tears. Passing them together (one struct) keeps them aligned.

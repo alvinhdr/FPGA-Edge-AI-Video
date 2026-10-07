@@ -133,6 +133,8 @@ add_files -norecurse [list $wrapper]
 # 4. Our sources and constraints
 # ---------------------------------------------------------------------------
 add_files -norecurse [glob [file join $root_dir rtl *.sv]]
+# ROM contents (font) read with $readmemb by rtl/font_rom.sv
+add_files -norecurse [glob [file join $root_dir rtl *.mem]]
 add_files -fileset constrs_1 -norecurse [glob [file join $root_dir constraints *.xdc]]
 set_property top top [current_fileset]
 update_compile_order -fileset sources_1
