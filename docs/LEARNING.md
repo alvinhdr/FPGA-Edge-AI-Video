@@ -53,3 +53,6 @@ A: Vivado includes xsim, so no extra tools are needed on Windows. The testbenche
 
 **Q: Why the Zybo Z7-10?**
 A: It is the smaller Zynq board (17,600 LUTs, 80 DSPs). Designing a small CNN that fits it shows careful use of resources.
+
+**Q: How did you debug the HDMI input without a logic analyzer?**
+A: I put status signals on LEDs: PLL locked, HDMI input locked (dvi2rgb pLocked), and two blinking counters, one on the board clock and one on the recovered pixel clock. On the PC, Windows showed a new display named "DGL 720P CEA", which is the EDID my design sends. That proved HPD, EDID, and the TMDS lock separately, before connecting the output.
