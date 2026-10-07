@@ -34,8 +34,16 @@ Phase 1 - HDMI pass-through: **IN PROGRESS** (hardware built, waiting for board 
 - Outputs: `build/edge_ai_video.bit`, `build/edge_ai_video.xsa`, reports in `build/reports/`.
 - `build/hw/ps7_init.tcl` extracted from the XSA.
 
+## Board tests (user-confirmed)
+- 2026-10-07, bitstream only (`xsdb.bat scripts/program.tcl bit`), JTAG shows target `xc7z010` (Z7-10 confirmed).
+  - LD0 blinking, LD1 on -> board clock + 200 MHz PLL OK.
+  - Laptop HDMI out -> board HDMI RX: Windows shows a second display named **"DGL 720P CEA"** (our EDID) -> HPD + DDC/EDID OK.
+  - LD2 on (dvi2rgb pLocked), LD3 blinking (pixel clock running) -> HDMI input locks to the laptop video.
+  - **Not yet tested:** HDMI TX -> monitor (user had only one HDMI cable). Test next session.
+- Board USB: FTDI "USB Serial Converter A/B", UART = **COM16** on this PC (the laptop and the build PC are the same computer).
+
 ## In progress
-- Board test of the video pass-through (user's board was borrowed for a class; back ~2 h after 2026-10-07 10:15).
+- Output half of the pass-through (needs a second HDMI cable).
 
 ## Open problems
 1. **Vitis 2025.1 cannot create the platform from our XSA.**
@@ -51,8 +59,7 @@ Phase 1 - HDMI pass-through: **IN PROGRESS** (hardware built, waiting for board 
    and Digilent board preset negative DQS-to-CLK delays (PSU-1..4).
 
 ## Next step
-1. When the board is back: user connects cables (power jumper USB, boot jumper JTAG, PROG/UART micro-USB,
-   laptop -> HDMI RX, HDMI TX -> monitor), then run
-   `C:\Xilinx\2025.1\Vivado\bin\xsdb.bat scripts/program.tcl bit` and check LEDs + monitor.
+1. With two HDMI cables: laptop -> HDMI RX, HDMI TX -> monitor. Run from PowerShell (Git Bash gives
+   "Access is denied"): `& "C:\Xilinx\2025.1\Vivado\bin\xsdb.bat" scripts/program.tcl bit`, check the monitor.
 2. Fix problem 1 (Vitis platform), then `vitis.bat -s scripts/build_sw.py hello` and
    `xsdb.bat scripts/program.tcl all hello`, check PuTTY (115200 baud).
