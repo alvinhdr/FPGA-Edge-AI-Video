@@ -62,12 +62,14 @@ def capture(ser):
 def ascii_art(img):
     chars = " .:-=+*#%@"
     for row in img:
-        print("  " + "".join(chars[min(9, v * 10 // 256)] * 2 for v in row))
+        print("  " + "".join(chars[min(9, int(v) * 10 // 256)] * 2 for v in row))
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", required=True, help="board UART, e.g. COM17")
+    ap.add_argument("--once", default=None, metavar="LABEL",
+                    help="capture one image and exit; LABEL 0-9 saves it, 'x' only shows it")
     args = ap.parse_args()
 
     try:
@@ -82,7 +84,10 @@ def main():
         ser.write(b"s")
         print(read_line(ser))
         while True:
-            cmd = input("digit 0-9 to capture+save, Enter = capture only, i/t/+/-/s, q = quit > ").strip()
+            if args.once is not None:
+                cmd = args.once if args.once != "x" else ""
+            else:
+                cmd = input("digit 0-9 to capture+save, Enter = capture only, i/t/+/-/s, q = quit > ").strip()
             if cmd == "q":
                 break
             if cmd in ("i", "t", "+", "-", "s"):
@@ -100,6 +105,8 @@ def main():
                 name = f"{cmd}_{time.strftime('%Y%m%d_%H%M%S')}.png"
                 Image.fromarray(img).save(os.path.join(OUT_DIR, name))
                 print(f"  saved ml/captures/{name}")
+            if args.once is not None:
+                break
 
 
 if __name__ == "__main__":

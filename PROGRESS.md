@@ -95,7 +95,14 @@ Phases 0-3 **DONE** (tags phase-0..3-done). Next: **Phase 4** (ROI capture, down
     (USED_IN_SYNTHESIS false). Rebuild: **0 critical warnings**, WNS +1.226 ns. CDC report reviewed (docs/CDC.md):
     the 5 criticals are inside Digilent dvi2rgb. TIMING.md #3 written (incl. my first wrong guess).
   - `sw/roi_capture` built: `build/sw/roi_capture.elf` (main.c 0 warnings).
-  - Left: board test `xsdb.bat scripts/program.tcl all roi_capture`,
+  - **Board test PASSED (2026-10-07, booted from microSD, BOOT.bin via scripts/make_boot.py):** AI view shows the
+    drawn digit white-on-black; UART status frames counting (~60/s); `c` capture works; `scripts/capture_roi.py --once`
+    saves PNGs. ROI moved live via xsdb register write (`mwr -force 0x43C0000C`, needs `memmap -addr 0x43C00000 -size 0x10000`).
+    With Paint not full-screen, ROI y0=296 keeps the Paint toolbar out of the box (hardware default stays 248).
+    First real capture classified correctly: a drawn 7 -> golden model 7 (`ml/captures/7_20261007_193029.png`).
+    Earlier bad captures (toolbar in ROI, digit touching edges -> predicted 2) were deleted.
+    Photo: docs/images/phase4_board_ai_view.jpg. **Phase 4 DONE.**
+  - Old note: board test `xsdb.bat scripts/program.tcl all roi_capture`,
     `scripts/capture_roi.py --port COM17`, LEARNING.md update, tag phase-4-done.
 
 ## Open problems

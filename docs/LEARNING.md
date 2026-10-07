@@ -123,3 +123,27 @@ A: A model can score 98 % on MNIST and fail on the live picture because the inpu
 
 **Q: Did anything surprise you in the first board test?**
 A: The overlay box was not centered. From its position (27 % instead of 41 % of the width) I worked out that the laptop was sending 1920x1080, not 1280x720: the EDID I used also offered 1080p, so Windows chose it. At 1080p the pixel clock is 148.5 MHz, twice my timing constraint and above the input MMCM's VCO limit, so it only worked by luck. I set the laptop to 720p and noted a custom 720p-only EDID as a fix. Lesson: "it works" is not the same as "it works inside the spec".
+
+## ROI capture and clock domain crossing (Phase 4)
+
+- **ROI capture**: turning the 224x224 box into the 28x28 CNN input while pixels stream by: gray → invert → 8x8 average → optional threshold. Only 28 small accumulators are stored, not the picture.
+- **Dual-clock block RAM**: a memory with two ports, each on its own clock. The standard way to move a buffer between clock domains.
+- **Ping-pong (double) buffer**: two banks; one is written while the other (complete) one is read. Prevents reading half-old, half-new images ("tearing").
+- **Toggle / pulse synchronizer**: send an event as a level change, not a pulse, so a slower clock cannot miss it.
+- **Req/ack handshake (bus synchronizer)**: hold a multi-bit value stable, send a request flag across, the other side copies the value and acknowledges. Keeps all bits consistent.
+- **AXI4-Lite**: simple ARM bus for registers: separate address/data/response channels with valid/ready handshakes.
+- **Memory-mapped registers**: the ARM reads/writes hardware settings like memory addresses (our base 0x43C00000).
+- **FSBL / BOOT.bin**: first-stage boot loader. BOOT.bin = FSBL + bitstream + ARM program; with the boot jumper on SD the board starts by itself.
+- **Mutation testing**: deliberately breaking the design to prove the testbench can catch the bug.
+
+**Q: How does data get from the pixel clock to the 100 MHz clock in your design?**
+A: Three mechanisms. The 28x28 image goes through a dual-clock block RAM with two banks: the pixel side writes one bank while the other side reads the last complete one. The "frame done" event crosses as a toggle through a 2-flop synchronizer with edge detect. Settings from the ARM (ROI position, invert, threshold, freeze) are 33 bits, so they use a request/acknowledge handshake that holds the value stable while it crosses.
+
+**Q: Why not just put 2 flip-flops on each bit of the settings bus?**
+A: Each bit can arrive one clock earlier or later than the others, so the receiver can see a value that never existed. I proved it: my CDC testbench passes with the handshake, but a mutant with 2 flops per bit failed with 127 errors, for example seeing 64 while the value went from 127 to 128.
+
+**Q: Your first live test predicted the wrong digit. Why, and what did you do?**
+A: The capture showed the reason: part of the Paint toolbar was inside the box (it became a white bar after inversion), and the digit touched the edges, unlike centered MNIST digits. I moved the ROI with a register write (no rebuild) and drew the digit centered at about 2/3 of the box height; then the model predicted correctly. Real captures like these will be used to measure and reduce the domain gap.
+
+**Q: You said timing passed "by luck" and then corrected yourself. What happened?**
+A: A clock-group constraint gave a "no objects found" warning. I first guessed a constraint-order problem, but checking the logs separately showed the warning was only in synthesis (where the PS block is a black box); implementation had applied it correctly. I documented both the wrong guess and the real cause in TIMING.md, and moved the constraint to an implementation-only file.

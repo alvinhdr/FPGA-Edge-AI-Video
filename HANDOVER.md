@@ -28,7 +28,7 @@ account after this; **always check `PROGRESS.md` and `git log` for anything newe
 | 1 HDMI pass-through | DONE (tag `phase-1-done`) | user saw laptop picture on TV through FPGA; LEDs; UART "hello"/"alive N" in PuTTY |
 | 2 Pixel pipeline overlay | DONE (tag `phase-2-done`) | sim 3 tests bit-exact; board: green box + green "7", SW0 gray, SW1 hide; photo `docs/images/phase2_board_first_light_1080p.jpg` |
 | 3 ML golden model | DONE (tag `phase-3-done`) | float 98.24 %, int8 golden 98.25 % on MNIST test; independent PyTorch cross-check bit-exact (2,000 images) |
-| 4 ROI capture + CDC | **IN PROGRESS** | RTL + all sims pass, build meets timing; XDC clock-group fix, ARM app build and board test left |
+| 4 ROI capture + CDC | DONE (tag `phase-4-done`) | sims pass; board (SD boot): AI view live, captures saved, first real capture 7 predicted correctly |
 | 5 CNN accelerator RTL | not started | |
 | 6 Integration | not started | |
 | 7 Benchmarks | not started | |
@@ -107,6 +107,7 @@ Board: power jumper USB, boot jumper JTAG, micro-USB in PROG/UART. UART: **11520
 - No on-board CNN numbers yet.
 
 ## 11. Next steps
+(UPDATE: steps 1-4 below are DONE except collecting more captures. Next = collect ~10 captures per digit with `scripts/capture_roi.py --port COM17`, then Phase 5. SD card: `scripts/make_boot.py --copy-to G:\`, boot jumper on SD.)
 1. DONE: XDC fix, clean rebuild, CDC review. 2. DONE: `build/sw/roi_capture.elf` built (rebuild with `vitis.bat -s scripts/build_sw.py roi_capture` if `build/` is missing).
 3. Board test (user, 2 HDMI cables, laptop at 1280x720): `xsdb.bat scripts/program.tcl all roi_capture`; check TV shows AI view (white digit on black, left of box) when drawing dark on white in the box; PuTTY `s` status shows frames counting.
 4. Close PuTTY, run `.venv\Scripts\python.exe scripts/capture_roi.py --port COM17`, capture ~10 images per digit into `ml/captures/`; note golden-model predictions. Update PROGRESS/LEARNING, tag `phase-4-done`.
