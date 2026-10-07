@@ -62,6 +62,15 @@ moment of each single read. Without `freeze`, a long multi-word read could start
 in the other. The ARM program therefore sets `freeze`, waits 3 frames, reads, checks the bank number
 did not change, and clears `freeze`.
 
+## Vivado CDC report review (`build/reports/cdc.rpt`, Phase 4)
+- **CDC-3 Info (15):** 1-bit synchronizers with `ASYNC_REG` recognized (ours and Digilent's). Good.
+- **CDC-15 Warning (33):** "clock enable controlled CDC structure" on `u_cfg_sync/hold_q -> data_q`.
+  This is exactly the req/ack handshake: the destination register only loads (clock enable) after the
+  request has been synchronized, when `hold_q` is stable. Expected, reviewed, OK.
+- **CDC-7 Critical (3), CDC-11 Critical (2):** all inside Digilent's `dvi2rgb` (`LockLostReset`,
+  `LockedSync`, `SyncBaseOvf`): its own asynchronous-reset synchronizers, with false paths in
+  Digilent's XDC. Not in our RTL; reviewed and accepted (third-party IP, used unchanged, works on the board).
+
 ## Planned (later phases)
 - CNN result (digit, confidence) `clk_acc` → `clk_pix`: `cdc_bus_sync` (same handshake as #6).
 - Test-image injection: the ARM writes port B of the ROI buffer (bank selection rules as in #7).

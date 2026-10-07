@@ -175,6 +175,11 @@ add_files -norecurse [glob [file join $root_dir rtl *.sv]]
 # ROM contents (font) read with $readmemb by rtl/font_rom.sv
 add_files -norecurse [glob [file join $root_dir rtl *.mem]]
 add_files -fileset constrs_1 -norecurse [glob [file join $root_dir constraints *.xdc]]
+# Read our XDC LAST: it refers to clocks that IP constraints create (clk_wiz input clock,
+# the PS clock clk_fpga_0). Read too early, those clocks do not exist yet (docs/TIMING.md #3).
+set_property PROCESSING_ORDER LATE [get_files -of_objects [get_filesets constrs_1] *.xdc]
+# Clock groups refer to the PS clock, which only exists in implementation (see that file's header)
+set_property USED_IN_SYNTHESIS false [get_files -of_objects [get_filesets constrs_1] *_impl.xdc]
 set_property top top [current_fileset]
 update_compile_order -fileset sources_1
 

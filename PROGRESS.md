@@ -90,11 +90,12 @@ Phases 0-3 **DONE** (tags phase-0..3-done). Next: **Phase 4** (ROI capture, down
   - Sims ALL PASS: scripts/sim_pixel_pipeline.py (ROI data bit-exact vs QUANTIZATION.md s8, banks, AI view);
     scripts/sim_unit.py (tb_cdc, tb_axil_regs). Mutation test: naive per-bit bus sync fails tb_cdc (127 torn values).
   - Build: timing met WNS +1.226 ns, 1588 LUT (9%), 1871 FF, 1 BRAM.
-  - **OPEN, fix first:** XDC CRITICAL WARNING: `get_clocks clk_fpga_0` finds no clock, so the clk_acc async clock
-    group is not applied. Check real name with report_clocks, or use
-    `get_clocks -of_objects [get_pins -hier -filter {NAME =~ *processing_system7_0/FCLK_CLK0}]`. Then review
-    build/reports/cdc.rpt CDC-7 (3) and CDC-11 (2). CDC-15 warnings on u_cfg_sync are the expected handshake.
-  - Left: `vitis.bat -s scripts/build_sw.py roi_capture`, board test `xsdb.bat scripts/program.tcl all roi_capture`,
+  - XDC issue SOLVED: the clk_fpga_0 warning came only from synthesis (block design is out-of-context);
+    implementation applied the group all along. Clock groups moved to `constraints/zybo_z7_10_impl.xdc`
+    (USED_IN_SYNTHESIS false). Rebuild: **0 critical warnings**, WNS +1.226 ns. CDC report reviewed (docs/CDC.md):
+    the 5 criticals are inside Digilent dvi2rgb. TIMING.md #3 written (incl. my first wrong guess).
+  - `sw/roi_capture` built: `build/sw/roi_capture.elf` (main.c 0 warnings).
+  - Left: board test `xsdb.bat scripts/program.tcl all roi_capture`,
     `scripts/capture_roi.py --port COM17`, LEARNING.md update, tag phase-4-done.
 
 ## Open problems

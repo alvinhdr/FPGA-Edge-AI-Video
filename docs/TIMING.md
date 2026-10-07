@@ -41,3 +41,24 @@ by making logic faster.
 Final fix: do not create any clock on `sysclk` in our XDC. The clk_wiz IP already creates the
 8.000 ns clock on its input, and our clock group refers to it by pin:
 `get_clocks -include_generated_clocks -of_objects [get_ports sysclk]`. One clock, no override.
+
+## 3. Clock group "found no clock" for the PS clock (Phase 4)
+
+**Symptom.** `CRITICAL WARNING: [Vivado 12-4739] set_clock_groups: No valid object(s) found for
+'-group [get_clocks -include_generated_clocks clk_fpga_0]'`.
+
+**First guess (wrong).** I thought Vivado read our XDC before the PS block's XDC, so the clock did
+not exist yet and the crossings were not constrained. I set `PROCESSING_ORDER LATE`; the warning stayed.
+
+**Real cause.** Looking at each log separately: the warning is only in the **synthesis** log, the
+**implementation** log has none, and `report_clocks` shows `clk_fpga_0` exists there. The block
+design (with the PS) is synthesized out-of-context, so during top-level synthesis the PS clock does
+not exist. In implementation, where timing is signed off, the clock group was applied correctly the
+whole time. Timing was never "passing by luck".
+
+**Fix.** Moved the clock groups into `constraints/zybo_z7_10_impl.xdc` with `USED_IN_SYNTHESIS false`.
+Kept `PROCESSING_ORDER LATE` (our XDC refers to IP-created clocks, so reading it last is correct anyway).
+
+**Lesson.** Check which step (synthesis or implementation) a warning comes from before drawing a
+conclusion, and verify a guess with `report_clocks` instead of assuming. My first explanation was
+wrong; checking the logs separately found the real cause.

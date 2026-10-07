@@ -62,20 +62,8 @@ set_property -dict { PACKAGE_PIN C20   IOSTANDARD TMDS_33  } [get_ports { hdmi_t
 set_property -dict { PACKAGE_PIN A20   IOSTANDARD TMDS_33  } [get_ports { hdmi_tx_n[2] }];  #IO_L2N_T0_AD8N_35 Sch=hdmi_tx_n[2]
 set_property -dict { PACKAGE_PIN B19   IOSTANDARD TMDS_33  } [get_ports { hdmi_tx_p[2] }];  #IO_L2P_T0_AD8P_35 Sch=hdmi_tx_p[2]
 
-## ---------------------------------------------------------------------------
-## Clock domain crossings (see docs/CDC.md)
-## Three clock families from three different sources, so they are asynchronous:
-##   1. board clock (sysclk -> clk_sys, 200 MHz ref clock)
-##   2. HDMI clock (recovered pixel clock, 5x serial clocks)
-##   3. clk_fpga_0 = clk_acc, 100 MHz from the Zynq PS (AXI-Lite, later the CNN)
-## Every signal that crosses between them goes through a synchronizer
-## (Digilent IP internals, cdc_sync_2ff, cdc_pulse_sync, cdc_bus_sync, or the
-## dual-clock ROI block RAM).
-## ---------------------------------------------------------------------------
-set_clock_groups -asynchronous \
-    -group [get_clocks -include_generated_clocks -of_objects [get_ports sysclk]] \
-    -group [get_clocks -include_generated_clocks hdmi_rx_clk] \
-    -group [get_clocks -include_generated_clocks clk_fpga_0]
+## Clock domain crossings: the asynchronous clock groups are in zybo_z7_10_impl.xdc
+## (implementation only, because the PS clock does not exist during top-level synthesis).
 
 ## Slow, human-speed I/O: no timing requirement (inputs are synchronized in RTL).
 set_false_path -to   [get_ports { led[*] hdmi_rx_hpd }]

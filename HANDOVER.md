@@ -51,7 +51,7 @@ Done (commit `cda5fc1`, `0d66d1c`):
 Unfinished: see section 6 and 11.
 
 ## 6. Open problems and bugs
-1. **XDC clock group for clk_acc not applied.** `constraints/zybo_z7_10.xdc` line ~75: `-group [get_clocks -include_generated_clocks clk_fpga_0]` gives CRITICAL WARNING "No valid object(s) found". So paths between clk_acc and clk_pix are not declared async (timing still met, but must be fixed). Fix idea: open the project and run `report_clocks` to get the real name, or use
+1. **(SOLVED after this file was first written: synthesis-only warning; see TIMING.md #3, clock groups now in zybo_z7_10_impl.xdc, 0 critical warnings.)** Old text: XDC clock group for clk_acc not applied. `constraints/zybo_z7_10.xdc` line ~75: `-group [get_clocks -include_generated_clocks clk_fpga_0]` gives CRITICAL WARNING "No valid object(s) found". So paths between clk_acc and clk_pix are not declared async (timing still met, but must be fixed). Fix idea: open the project and run `report_clocks` to get the real name, or use
    `get_clocks -of_objects [get_pins -hier -filter {NAME =~ *processing_system7_0/FCLK_CLK0}]`.
 2. After that, review `build/reports/cdc.rpt`: CDC-7 Critical (3, async reset unknown circuitry) and CDC-11 Critical (2, fan-out from launch flop). CDC-15 warnings on `u_cfg_sync/hold_q -> data_q` are the expected handshake structure.
 3. Known harmless warnings: project-stage CRITICAL WARNINGs from Digilent's packaged ILA (IP_Flow 19-4965) and board preset DDR DQS (PSU-1..4). Synthesis/implementation logs had 0 critical warnings in Phase 2 (before problem 1).
@@ -107,8 +107,7 @@ Board: power jumper USB, boot jumper JTAG, micro-USB in PROG/UART. UART: **11520
 - No on-board CNN numbers yet.
 
 ## 11. Next steps
-1. Fix the clk_acc clock group in `constraints/zybo_z7_10.xdc` (section 6.1); rebuild; check 0 critical warnings; review `build/reports/cdc.rpt`. First action: open `build/vivado/edge_ai_video.xpr` in Vivado Tcl (batch) and `open_run impl_1; report_clocks`.
-2. Build ARM app: `vitis.bat -s scripts/build_sw.py roi_capture`.
+1. DONE: XDC fix, clean rebuild, CDC review. 2. DONE: `build/sw/roi_capture.elf` built (rebuild with `vitis.bat -s scripts/build_sw.py roi_capture` if `build/` is missing).
 3. Board test (user, 2 HDMI cables, laptop at 1280x720): `xsdb.bat scripts/program.tcl all roi_capture`; check TV shows AI view (white digit on black, left of box) when drawing dark on white in the box; PuTTY `s` status shows frames counting.
 4. Close PuTTY, run `.venv\Scripts\python.exe scripts/capture_roi.py --port COM17`, capture ~10 images per digit into `ml/captures/`; note golden-model predictions. Update PROGRESS/LEARNING, tag `phase-4-done`.
 5. Phase 5: plan CNN accelerator RTL (MAC array, conv/pool/FC engines, requant, controller) with self-checking TBs against `ml/export/vec_full_*`.
