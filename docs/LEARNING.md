@@ -120,3 +120,6 @@ A: I wrote a second, independent integer implementation with PyTorch's conv/pool
 
 **Q: Why do you report MNIST accuracy and "real" accuracy separately?**
 A: A model can score 98 % on MNIST and fail on the live picture because the input looks different. A single mixed number would hide that. The report keeps clean MNIST, a synthetic stress test, and (later) real captured ROIs and on-board results as separate rows.
+
+**Q: Did anything surprise you in the first board test?**
+A: The overlay box was not centered. From its position (27 % instead of 41 % of the width) I worked out that the laptop was sending 1920x1080, not 1280x720: the EDID I used also offered 1080p, so Windows chose it. At 1080p the pixel clock is 148.5 MHz, twice my timing constraint and above the input MMCM's VCO limit, so it only worked by luck. I set the laptop to 720p and noted a custom 720p-only EDID as a fix. Lesson: "it works" is not the same as "it works inside the spec".

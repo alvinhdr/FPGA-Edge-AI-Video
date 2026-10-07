@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current phase
-Phase 1 - HDMI pass-through: **IN PROGRESS**. Done: build (timing met), HDMI input lock + EDID on board, ARM UART hello on board. Left: HDMI TX -> monitor test (needs 2nd HDMI cable).
+Phases 0-3 **DONE** (tags phase-0..3-done). Next: **Phase 4** (ROI capture, downsampling, CDC, AXI-Lite readback, AI-view preview).
 
 ## Environment (checked 2026-10-07)
 - Board: **Digilent Zybo Z7-10** (XC7Z010-1CLG400C), confirmed by user
@@ -73,8 +73,18 @@ Phase 1 - HDMI pass-through: **IN PROGRESS**. Done: build (timing met), HDMI inp
   1000-image vectors (git-ignored, run `ml/export.py` to regenerate). Report: `ml/reports/accuracy.md`.
 - Reproduce: `.venv\Scripts\python.exe ml/train.py; ml/quantize.py; ml/check_golden.py; ml/evaluate.py; ml/export.py`.
 
+## Board test Phase 1 + 2 (user-confirmed 2026-10-07, TV Sharp AQUOS, laptop HDMI out)
+- Laptop picture appears on the TV through the FPGA (pass-through) -> **Phase 1 DONE**.
+- Green ROI box + green "7" drawn on live video; colors correct (R-B-G order confirmed).
+  SW0 up -> gray picture; SW1 up -> box and digit hidden -> **Phase 2 DONE**. Photo: `docs/images/phase2_board_first_light_1080p.jpg`.
+- First "TV black" problem was a loose HDMI cable (not a design bug).
+- **Found:** Windows picked **1920x1080** (Digilent's `dgl_720p_cea.data` EDID also offers 1080p). The photo was taken at
+  1080p (box left of center). At 1080p the pixel clock is 148.5 MHz: outside our timing constraint and above the
+  dvi2rgb MMCM VCO range (1485 > 1200 MHz) -> worked by luck. With Windows set to **1280x720** (Extend mode, or
+  Duplicate with 1280x720) the box is centered. **Demo must use 1280x720.** TODO later: own EDID with only 720p.
+
 ## In progress
-- Board test with 2 HDMI cables = Phase 1 milestone (pass-through) + Phase 2 milestone (overlay) together.
+- Nothing. Next: Phase 4 plan (CDC design).
 
 ## Open problems
 1. **SOLVED (2026-10-07):** the installed edition was "Vivado ML Standard" (Vivado only, partial Vitis).
