@@ -1,0 +1,49 @@
+# Vivado / Vitis generated files
+.Xil/
+*.cache/
+*.runs/
+*.gen/
+*.sim/
+*.hw/
+*.ip_user_files/
+*.srcs/
+*.jou
+*.log
+*.str
+*.pb
+*.wdb
+xsim.dir/
+webtalk*
+vivado*.backup.*
+hs_err_pid*
+.vitis/
+.metadata/
+.analytics
+vitis_ws/
+workspace/
+build/
+out/
+
+# Bitstreams (use GitHub Releases instead)
+*.bit
+*.bin
+*.xsa
+*.ltx
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Big ML data and checkpoints
+ml/data/
+*.pt
+*.pth
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.claude/settings.local.json
