@@ -1,7 +1,7 @@
-﻿# PROGRESS
+# PROGRESS
 
 ## Current phase
-Phase 0 â€” Setup (in progress)
+Phase 0 - Setup: **DONE** (tag `phase-0-done`). Waiting for the user's OK to start Phase 1.
 
 ## Environment (checked 2026-10-07)
 - Board: **Digilent Zybo Z7-10** (XC7Z010-1CLG400C), confirmed by user
@@ -9,25 +9,25 @@ Phase 0 â€” Setup (in progress)
 - Vivado 2025.1 and Vitis 2025.1 at `C:\Xilinx\2025.1`
 - Python 3.13.15 (NumPy, Pillow installed; PyTorch, matplotlib, pyserial NOT yet installed)
 - Git 2.55.0 (user: Alvin Hadar, hadaralvin@gmail.com)
-- GitHub CLI 2.102.0 installed with winget, logged in as `alvinhdr`
-- Simulators: Verilator / Icarus / cocotb not installed
+- GitHub CLI 2.102.0 (installed with winget), logged in as `alvinhdr`
+- Simulators: Verilator / Icarus / cocotb not installed; Vivado xsim is available
 
 ## Decisions made
 - Simulator: **Vivado xsim** with SystemVerilog testbenches (already installed; Verilator + cocotb are hard on Windows).
 - Repo is **private** until Phase 8, then public.
-- Repo root = this folder. GitHub repo name: `fpga-edge-ai-video`.
+- Repo root = this folder. GitHub repo: https://github.com/alvinhdr/fpga-edge-ai-video
 - Python packages are installed only when needed (PyTorch in Phase 3).
 
 ## What works
-- Repo folder structure and .gitignore created.
+- Repo folder structure, `.gitignore`, `README.md` (placeholder), `PROGRESS.md`, `docs/LEARNING.md`.
+- Private GitHub repo created; `main` pushed; tag `phase-0-done` pushed.
 
 ## In progress
-- GitHub login and first push.
-- `docs/LEARNING.md` created.
+- Nothing.
 
 ## Open problems
-- Vitis 2025.1: old `xsct` command not found at the expected path. Check in Phase 1 (Vitis 2025.1 uses the new unified IDE; CLAUDE.md says Digilent supports Classic mode only for 2024.1+ releases).
+- Vitis 2025.1: the old `xsct` command was not found at `C:\Xilinx\2025.1\Vitis\bin\xsct.bat`. Check in Phase 1 (CLAUDE.md says Digilent supports Vitis Classic mode only for 2024.1+ releases).
+- Digilent `vivado-library` and board files must match Vivado 2025.1. Check whether a 2025.1-compatible release exists (latest known Digilent HDMI demo release is for 2024.1).
 
 ## Next step
-Finish Phase 0: `gh auth login`, create private repo, push, tag `phase-0-done`. Then wait for the user to say OK before Phase 1.
-
+Phase 1 (HDMI pass-through). Recommended: `/model opus` `/effort high` for planning, then `sonnet` `medium` for Tcl scripts. First action: get Digilent `vivado-library` and the Zybo Z7 master XDC, and check the Vitis 2025.1 flow.
