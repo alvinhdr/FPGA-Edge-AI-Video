@@ -84,7 +84,18 @@ Phases 0-3 **DONE** (tags phase-0..3-done). Next: **Phase 4** (ROI capture, down
   Duplicate with 1280x720) the box is centered. **Demo must use 1280x720.** TODO later: own EDID with only 720p.
 
 ## In progress
-- Nothing. Next: Phase 4 plan (CDC design).
+- **Phase 4 (ROI capture + CDC), 2026-10-07, commit cda5fc1:**
+  - RTL done: roi_capture, ai_view_overlay, ram_tdp, cdc_pulse_sync, cdc_bus_sync, axil_regs (base 0x43C00000,
+    map in sw/common/edge_ai_regs.h); top.sv + block design (PS M_AXI_GP0 -> SmartConnect -> M_AXI_LITE, clk_acc 100 MHz).
+  - Sims ALL PASS: scripts/sim_pixel_pipeline.py (ROI data bit-exact vs QUANTIZATION.md s8, banks, AI view);
+    scripts/sim_unit.py (tb_cdc, tb_axil_regs). Mutation test: naive per-bit bus sync fails tb_cdc (127 torn values).
+  - Build: timing met WNS +1.226 ns, 1588 LUT (9%), 1871 FF, 1 BRAM.
+  - **OPEN, fix first:** XDC CRITICAL WARNING: `get_clocks clk_fpga_0` finds no clock, so the clk_acc async clock
+    group is not applied. Check real name with report_clocks, or use
+    `get_clocks -of_objects [get_pins -hier -filter {NAME =~ *processing_system7_0/FCLK_CLK0}]`. Then review
+    build/reports/cdc.rpt CDC-7 (3) and CDC-11 (2). CDC-15 warnings on u_cfg_sync are the expected handshake.
+  - Left: `vitis.bat -s scripts/build_sw.py roi_capture`, board test `xsdb.bat scripts/program.tcl all roi_capture`,
+    `scripts/capture_roi.py --port COM17`, LEARNING.md update, tag phase-4-done.
 
 ## Open problems
 1. **SOLVED (2026-10-07):** the installed edition was "Vivado ML Standard" (Vivado only, partial Vitis).
