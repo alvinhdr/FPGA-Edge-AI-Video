@@ -170,3 +170,21 @@ A: Layer 1 has only 8 output channels, so half of 16 lanes are idle there, and e
 
 **Q: Tell me about a timing problem you fixed.**
 A: The accelerator first failed 100 MHz by 2 ns. I fixed three different critical paths, one by one, always from the timing report: the confidence math (subtract, multiply, add in one clock) — split into 3 clocks; the MAC (RAM output → mux → multiply → accumulate in one clock) — registered inputs and a 2-stage MAC, which also moved the multipliers into DSPs and halved the LUTs; and the address generator, where a layer-dependent size created real multipliers — I wrote one formula per layer with constant sizes. Final slack +0.5 ns, re-verified bit-exact after every change.
+
+## Full system integration (Phase 6)
+
+- **System integration**: connecting separately verified blocks (video pipeline, ROI buffer, CNN, registers, ARM program) into one design, then re-checking timing and behaviour as a whole.
+- **Test-image injection**: the ARM writes a known 28x28 image into a small RAM in the FPGA, starts the CNN, and reads the answer. It tests the real hardware without a camera or a drawing, and lets us compare with the golden model on the board.
+- **Result CDC**: the CNN result {valid, digit, confidence} = 13 bits goes from clk_acc to clk_pix through the same req/ack handshake as the settings, so the overlay never shows a half-updated value.
+- **EDID**: a small data block (256 bytes) that a monitor input sends to the video source, listing the resolutions it supports. Our board's HDMI input sends one, so the laptop decides what to send based on it.
+- **Active signal mode vs desktop mode** (Windows): desktop mode is the picture size Windows draws; active signal mode is what actually goes out on the cable. They can be different (the GPU scales).
+- **Frame N+1 latency**: the CNN result of frame N is drawn on frame N+1, because there is no frame buffer. One frame = 16.7 ms, invisible to a human.
+
+**Q: How does the CNN know when to run?**
+A: When the ROI capture finishes a frame, it flips the ready bank and sends a "frame done" toggle to the 100 MHz domain. If the CNN is enabled and idle, that pulse starts it on the bank that is complete. In injection mode the auto start is off and only the ARM starts it.
+
+**Q: The box was in the wrong place on the first full test. Why?**
+A: Windows said 1280x720, but the "active signal mode" was 1920x1080: the graphics card scaled the desktop up because Digilent's EDID also offered 1080p. All my positions are for 720p, and 1080p is also above the speed grade. I wrote a script that builds a new EDID with only the 720p mode (fixed checksums, new product code), and the build script puts it into the HDMI input IP. After that the laptop could only send 720p and the box was centered.
+
+**Q: How do you know the hardware on the board gives the same answer as in simulation?**
+A: The injection self-test: 20 MNIST images stored in the ARM program are sent to the FPGA, and the digit and confidence are compared with the golden model's values. On the board: 20/20 bit-exact.

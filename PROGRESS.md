@@ -1,8 +1,8 @@
 # PROGRESS
 
 ## Current phase
-Phases 0-5 **DONE** (tags phase-0..5-done). **Phase 6 STARTED 2026-10-07** (integrate CNN with ROI buffer + overlay, AXI-Lite,
-test-image injection, live demo). Plan being presented to the user.
+Phases 0-6 **DONE** (tags phase-0..6-done). **Phase 7 (measurements) STARTED 2026-10-08.** See section "Phase 7" and "Next step".
+Older sections below are history; the newest information is at the bottom of each phase section.
 
 ## Environment (checked 2026-10-07)
 - Board: **Digilent Zybo Z7-10** (XC7Z010-1CLG400C), confirmed by user
@@ -96,7 +96,7 @@ test-image injection, live demo). Plan being presented to the user.
 - OOC build P=8 @100 MHz (`scripts/synth_cnn.tcl 8`): **WNS +0.507 ns**, 1211 LUT, 966 FF, 3.5 BRAM, 10 DSP, 0 critical
   warnings. Three critical paths fixed (docs/TIMING.md #4).
 
-## Phase 6 - integration (IN PROGRESS, 2026-10-07)
+## Phase 6 - integration (DONE 2026-10-08)
 - Done: `rtl/conf_bar_overlay.sv` (bar under digit, pipeline latency 7); digit/bar shown only when a CNN result exists.
   `rtl/ai_core.sv` (clk_acc: axil_regs + cnn_top P=8 + inject RAM + auto/manual start + ROI port-B sharing + result regs).
   `rtl/axil_regs.sv` extended (ID 0xED6E0006, CTRL bits cnn_enable/inject_mode, CNN_START 0x18, RESULT 0x1C, CNN_CYCLES 0x20,
@@ -106,11 +106,15 @@ test-image injection, live demo). Plan being presented to the user.
 - Full build: timing met **WNS +0.653 ns**, 0 critical warnings, 2708 LUT (15.4%), 2985 FF, 5 BRAM.
 - `sw/edge_ai_demo/main.c` built (keys: p s j c w/a/z/d x i t + - h; PRED lines on change; `j` = 20-image injection
   self-test vs golden, header `sw/common/mnist_test_images.h` from ml/export.py). `build/BOOT.bin` = FSBL+bit+edge_ai_demo.
-- **NEXT: board test** (not done yet): copy BOOT.bin to SD (`scripts/make_boot.py --app edge_ai_demo --copy-to G:\`),
-  boot from SD, PuTTY COM17: press `j` (expect 20/20 bit-exact), draw digits in Paint -> TV shows predicted digit + bar.
-  If good: PROGRESS/LEARNING/HANDOVER, tag phase-6-done.
+- **Board test: 2026-10-07 found the overlay up-left of center.** Cause: Windows "active signal mode" was 1920x1080
+  (desktop 1280x720 scaled up) because Digilent's EDID also offers 1080p. Fix: `scripts/make_edid.py` ->
+  `rtl/edid_720p_only.data` (only CEA VIC 4 = 720p60), `scripts/build_hw.tcl` copies it over the IP's `dgl_720p_cea.data`
+  in `build/` after `generate_target` (docs/TIMING.md #5). Rebuild: **WNS +0.302 ns, WHS +0.011 ns**, 0 critical warnings,
+  2710 LUT (15.4%), 2985 FF (8.5%), 5 BRAM tiles, 10 DSP; power estimate 2.038 W.
+- **Board test PASSED (user-confirmed 2026-10-08, SD boot):** laptop now sends 720p, box centered; PuTTY `j` ->
+  **INJECT 20/20 bit-exact**; digits drawn in Paint -> TV shows the correct digit + confidence bar live. **Phase 6 DONE.**
 
-## In progress
+## Phase 4 history
 - **Phase 4 (ROI capture + CDC), 2026-10-07, commit cda5fc1:**
   - RTL done: roi_capture, ai_view_overlay, ram_tdp, cdc_pulse_sync, cdc_bus_sync, axil_regs (base 0x43C00000,
     map in sw/common/edge_ai_regs.h); top.sv + block design (PS M_AXI_GP0 -> SmartConnect -> M_AXI_LITE, clk_acc 100 MHz).
@@ -159,8 +163,10 @@ test-image injection, live demo). Plan being presented to the user.
 2. Known harmless warnings: dvi2rgb's unused ILA cores (CRITICAL WARNING Designutils 20-1280 / Vivado 12-4739),
    and Digilent board preset negative DQS-to-CLK delays (PSU-1..4).
 
+## Phase 7 - measurements (STARTED 2026-10-08)
+- Plan proposed to the user (see HANDOVER.md section 5). Found: Vitis apps were built with **-O0** (UserConfig.cmake
+  default); the ARM software baseline must be built with -O2/-O3 for a fair speedup number.
+
 ## Next step
-1. With two HDMI cables: laptop -> HDMI RX, HDMI TX -> monitor (Phase 2 bitstream already built). Run from PowerShell (Git Bash gives
-   "Access is denied"): `& "C:\Xilinx\2025.1\Vivado\bin\xsdb.bat" scripts/program.tcl bit`, check the monitor.
-2. Fix problem 1 (Vitis platform), then `vitis.bat -s scripts/build_sw.py hello` and
-   `xsdb.bat scripts/program.tcl all hello`, check PuTTY (115200 baud).
+1. Agree Phase 7 plan (fine-tuning question). 2. C reference model + `sw/benchmark` + `scripts/bench_mnist.py`.
+3. User: boot jumper to JTAG; Claude runs `program.tcl all benchmark` and the 10,000-image run.

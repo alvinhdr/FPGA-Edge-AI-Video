@@ -82,3 +82,28 @@ Result (P = 8): 1211 LUT, 966 FF, 3.5 BRAM, 10 DSP, 23,965 cycles = 240 us per i
 built. (3) Constants matter: the same formula with a variable size needs a multiplier, with a
 constant size only an adder. (4) A pipeline stage changes the timing of every flag that travels
 with the data; the bit-exact testbench is what makes such changes safe.
+
+## 5. Windows picked 1080p: the overlay was not centered (Phase 6 board test)
+
+**Symptom.** On the board, the green box, AI view and digit appeared in the upper-left part of the
+screen, and looked about 2/3 of the size they should have next to the Paint window.
+
+**Wrong first guess.** "Windows display scale is 150 %". The user's settings said 1280x720 and 100 %.
+
+**Real cause.** Windows > Advanced display > "Active signal mode" said **1920 x 1080**, while the
+"Desktop mode" said 1280 x 720: the graphics card stretched the desktop and sent a 1080p signal
+(148.5 MHz pixel clock). Digilent's EDID (`dgl_720p_cea.data`) also lists 1080p and 1280x1024, so
+the laptop was allowed to choose. All our positions (ROI x=528..751, y=248..471) are for a
+1280x720 frame, so on a 1080p frame they are up-left of the center. 1080p is also outside the
+-1 speed grade (the dvi2rgb MMCM VCO would be 1485 MHz > 1200 MHz).
+
+**Fix.** `scripts/make_edid.py` builds `rtl/edid_720p_only.data`: same vendor ID and 720p timing as
+Digilent's file, but 1080p, 1280x1024 and all legacy modes removed (only CEA VIC 4). Product code
+changed so Windows treats it as a new monitor. `scripts/build_hw.tcl` overwrites the IP's copy of
+`dgl_720p_cea.data` inside `build/` (the submodule is not touched).
+
+**Note.** The EDID is only what the Zybo input port tells the laptop. A monitor plugged directly
+into the laptop still uses its own EDID, so gaming at high resolution is not affected.
+
+**Lesson.** When something is "in the wrong place", measure what signal really arrives (active
+signal mode), do not assume the setting you see is the signal on the cable.

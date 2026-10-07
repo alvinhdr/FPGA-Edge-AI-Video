@@ -90,6 +90,7 @@ set_property -dict [list \
     CONFIG.kAddBUFG       {true} \
     CONFIG.kDebug         {false} ] [get_ips dvi2rgb_0]
 
+
 # 2c. HDMI output. Generates its own 5x serial clock with an MMCM.
 #     MMCM VCO = 74.25 MHz * 10 = 742.5 MHz (inside the -1 MMCM range 600-1200 MHz).
 create_ip -vlnv digilentinc.com:ip:rgb2dvi:1.4 -module_name rgb2dvi_0 -dir $ip_dir
@@ -100,6 +101,14 @@ set_property -dict [list \
     CONFIG.kRstActiveHigh     {false} ] [get_ips rgb2dvi_0]
 
 generate_target {instantiation_template synthesis} [get_ips]
+
+# 2b-1. EDID that offers ONLY 1280x720@60 (made by scripts/make_edid.py).
+#       Digilent's dgl_720p_cea.data also lists 1080p, and Windows picks it (148.5 MHz is
+#       outside the -1 speed grade). generate_target copies the IP into build/; we overwrite the
+#       copy of the 720p file there, so the submodule stays untouched (docs/TIMING.md #5).
+set edid_dst [file join $ip_dir dvi2rgb_0 src dgl_720p_cea.data]
+if {![file exists $edid_dst]} { error "EDID file not found in generated IP: $edid_dst" }
+file copy -force [file join $root_dir rtl edid_720p_only.data] $edid_dst
 
 # dvi2rgb ships XDC files for its debug ILA cores. We build it with kDebug=false,
 # so those cores do not exist and the XDCs only give CRITICAL WARNINGs. Disable them.
