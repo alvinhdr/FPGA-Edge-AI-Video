@@ -1,7 +1,8 @@
 # PROGRESS
 
 ## Current phase
-Phases 0-3 **DONE** (tags phase-0..3-done). Next: **Phase 4** (ROI capture, downsampling, CDC, AXI-Lite readback, AI-view preview).
+Phases 0-4 **DONE** (tags phase-0..4-done). **Phase 5 STARTED** (CNN accelerator RTL; plan approved 2026-10-07:
+P-wide MAC array (parameter), pooling fused into conv, wide weight ROM `ml/export/wrom_p{P}.mem`).
 
 ## Environment (checked 2026-10-07)
 - Board: **Digilent Zybo Z7-10** (XC7Z010-1CLG400C), confirmed by user

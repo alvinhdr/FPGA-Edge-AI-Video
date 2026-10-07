@@ -122,9 +122,15 @@ If a trained model ever breaks this, the export fails (instead of silently overf
 
 ## 7. What "bit-exact" means in this project
 
-For every test image, the RTL must produce the same `L1`, `P1`, `L2`, `P2` uint8 feature maps,
-the same 10 F1 accumulators, the same `digit`, and the same `conf` as `ml/golden_int.py`.
+For every test image, the RTL must produce the same **P1** (13x13x8) and **P2** (5x5x16) uint8 feature
+maps, the same 10 F1 accumulators, the same `digit`, and the same `conf` as `ml/golden_int.py`.
 `ml/export.py` writes all of these intermediate results as test vectors.
+
+The un-pooled maps L1 (26x26x8) and L2 (11x11x16) are NOT produced by the hardware (decision in
+Phase 5): it fuses pooling into the convolution. For each pooled pixel it computes the four
+accumulators of the 2x2 window, keeps the largest, and requantizes only that one. This is exactly
+equal to section 5, because requantization is monotonic (non-decreasing):
+`max(requant(a), requant(b)) = requant(max(a, b))`. L2 row/column 10 are skipped (pooling drops them).
 
 ## 8. Input preprocessing in hardware (Phase 4, defined here so training can match it)
 
