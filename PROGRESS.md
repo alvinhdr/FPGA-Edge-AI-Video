@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current phase
-Phase 1 - HDMI pass-through: **IN PROGRESS** (hardware built, waiting for board test; ARM software build blocked).
+Phase 1 - HDMI pass-through: **IN PROGRESS**. Done: build (timing met), HDMI input lock + EDID on board, ARM UART hello on board. Left: HDMI TX -> monitor test (needs 2nd HDMI cable).
 
 ## Environment (checked 2026-10-07)
 - Board: **Digilent Zybo Z7-10** (XC7Z010-1CLG400C), confirmed by user
@@ -44,7 +44,10 @@ Phase 1 - HDMI pass-through: **IN PROGRESS** (hardware built, waiting for board 
   - Laptop HDMI out -> board HDMI RX: Windows shows a second display named **"DGL 720P CEA"** (our EDID) -> HPD + DDC/EDID OK.
   - LD2 on (dvi2rgb pLocked), LD3 blinking (pixel clock running) -> HDMI input locks to the laptop video.
   - **Not yet tested:** HDMI TX -> monitor (user had only one HDMI cable). Test next session.
-- Board USB: FTDI "USB Serial Converter A/B", UART = **COM16** on this PC (the laptop and the build PC are the same computer).
+- 2026-10-07, `xsdb.bat scripts/program.tcl all hello`: ARM runs `sw/hello`; UART output read by Claude
+  with pyserial ("alive 7..10") and confirmed by the user in PuTTY ("alive 72..74"). **UART hello: DONE.**
+- Board USB: FTDI "USB Serial Converter A/B". UART COM port number depends on the laptop USB port
+  (COM16 on one port, **COM17** on another). PuTTY session `zybo`: serial, 115200, 8N1, no flow control.
 
 ## In progress
 - Output half of the pass-through (needs a second HDMI cable).
