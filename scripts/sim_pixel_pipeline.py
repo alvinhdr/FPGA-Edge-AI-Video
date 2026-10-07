@@ -8,7 +8,10 @@
 #   3. Compile and run tb/tb_pixel_pipeline.sv in xsim for several test cases.
 #   4. For each case check:
 #        a) DE/HSYNC/VSYNC come out unchanged, delayed by exactly the pipeline latency
-#        b) every visible output pixel of BOTH frames == Python reference model (bit-exact)
+#        b) every visible output pixel of BOTH frames == Python reference model (bit-exact),
+#           including the AI view (frame k shows the capture of frame k-1; frame 0 shows zeros)
+#        c) ROI capture: exactly 784 buffer writes per frame, bank 0 then bank 1, one
+#           frame-done event per frame, and the 28x28 data == docs/QUANTIZATION.md section 8
 #   5. Save before/after pictures to docs/images/.
 #
 # Usage (from the repo root, in PowerShell):
@@ -34,14 +37,16 @@ VIVADO_BIN = os.environ.get("VIVADO_BIN", r"C:\Xilinx\2025.1\Vivado\bin")
 
 # Sources in compile order (package first). top.sv is not needed here.
 SOURCES = ["rtl/video_pkg.sv", "rtl/pix_pos_counter.sv", "rtl/rgb2gray.sv", "rtl/font_rom.sv",
-           "rtl/roi_overlay.sv", "rtl/digit_overlay.sv", "rtl/pixel_pipeline.sv",
-           "tb/tb_pixel_pipeline.sv"]
+           "rtl/roi_overlay.sv", "rtl/digit_overlay.sv", "rtl/ram_tdp.sv", "rtl/roi_capture.sv",
+           "rtl/ai_view_overlay.sv", "rtl/pixel_pipeline.sv", "tb/tb_pixel_pipeline.sv"]
 
+# ROI x must be right of the AI view (x >= 480), so the AI view is always read before
+# the same line's ROI blocks are written (= "previous frame" semantics, exact in the reference).
 TESTS = [
-    # name,          gray, overlay, roi_x0, roi_y0, digit
-    ("color_overlay", 0,    1,       528,    248,    7),
-    ("gray_overlay",  1,    1,       100,    60,     3),
-    ("passthrough",   0,    0,       528,    248,    5),
+    # name,          gray, overlay, roi_x0, roi_y0, digit, invert, thresh_en, thresh
+    ("color_overlay", 0,    1,       528,    248,    7,     1,      0,         64),
+    ("gray_thresh",   1,    1,       900,    400,    3,     0,      1,         100),
+    ("passthrough",   0,    0,       528,    248,    5,     1,      0,         64),
 ]
 
 
@@ -91,13 +96,52 @@ def compile_tb():
          "xil_defaultlib.tb_pixel_pipeline"], os.path.join(SIM_DIR, "xelab.log"))
 
 
-def check(name, in_words, img, gray, overlay, roi_x0, roi_y0, digit):
+def check_roi(roi_ref):
+    """c) ROI buffer writes: 784 per frame, bank 0 then 1, one frame event per frame, data == spec."""
+    errors = []
+    frames, cur, events = [], [], 0
+    with open(os.path.join(SIM_DIR, "roi_writes.txt")) as f:
+        for line in f:
+            p = line.split()
+            if not p:
+                continue
+            if p[0] == "w":
+                cur.append((int(p[1], 16), int(p[2], 16)))
+            elif p[0] == "f":
+                events += 1
+                frames.append(cur)
+                cur = []
+    if cur:
+        errors.append(f"{len(cur)} ROI writes after the last frame-done event")
+    if events != 2 or len(frames) != 2:
+        errors.append(f"expected 2 frame-done events, got {events}")
+    for k, writes in enumerate(frames):
+        if len(writes) != 784:
+            errors.append(f"ROI frame {k}: {len(writes)} writes instead of 784")
+            continue
+        banks = {a >> 10 for a, _ in writes}
+        if banks != {k % 2}:
+            errors.append(f"ROI frame {k}: written to bank(s) {sorted(banks)}, expected {k % 2}")
+        img = np.zeros(784, np.int64) - 1
+        for a, d in writes:
+            img[a & 0x3FF] = d
+        if np.any(img < 0):
+            errors.append(f"ROI frame {k}: some of the 784 addresses were never written")
+        diff = img.reshape(28, 28) != roi_ref
+        if diff.any():
+            y, x = np.argwhere(diff)[0]
+            errors.append(f"ROI frame {k}: {int(diff.sum())} of 784 values differ (first at block "
+                          f"x={x}, y={y}: got {img.reshape(28, 28)[y, x]}, expected {roi_ref[y, x]})")
+    return errors
+
+
+def check(name, in_words, img, gray, overlay, roi_x0, roi_y0, digit, inv, then, thr):
     out_words = vs.read_stream(os.path.join(SIM_DIR, "stream_out.txt"))
     errors = []
 
     # a) Timing signals: output line (i + LATENCY - 1) must equal input line i.
     #    (The TB samples the output just after the clock edge where input i entered
-    #    stage 1, so a 4-stage pipeline shows up as a shift of 3 lines.)
+    #    stage 1, so an N-stage pipeline shows up as a shift of N-1 lines.)
     shift = vs.LATENCY - 1
     sync_mask = vs.DE_BIT | vs.HS_BIT | vs.VS_BIT
     n = len(in_words)
@@ -109,19 +153,25 @@ def check(name, in_words, img, gray, overlay, roi_x0, roi_y0, digit):
         if len(bad):
             errors.append(f"timing signals differ at {len(bad)} clocks (first at clock {bad[0]})")
 
-    # b) Pixels of each frame vs the reference model
-    ref = vs.reference_pipeline(img, gray, overlay, roi_x0, roi_y0, digit)
+    # b) Pixels of each frame vs the reference model. The AI view shows the previous
+    #    frame's capture: zeros in frame 0, the (identical) capture in frame 1.
+    roi_ref = vs.preprocess_roi(img, roi_x0, roi_y0, inv, then, thr)
     frames = vs.stream_to_frames(out_words)
     if len(frames) != 2:
         errors.append(f"expected 2 output frames, got {len(frames)}")
     for i, fr in enumerate(frames):
+        ref = vs.reference_pipeline(img, gray, overlay, roi_x0, roi_y0, digit,
+                                    ai_view=None if i == 0 else roi_ref)
         diff = np.any(fr != ref, axis=-1)
         if diff.any():
             yx = np.argwhere(diff)[0]
             errors.append(f"frame {i}: {int(diff.sum())} pixels differ "
                           f"(first at x={yx[1]}, y={yx[0]}: got {fr[yx[0], yx[1]]}, expected {ref[yx[0], yx[1]]})")
     if frames:
-        Image.fromarray(frames[-1]).save(os.path.join(IMG_DIR, f"phase2_sim_{name}.png"))
+        Image.fromarray(frames[-1]).save(os.path.join(IMG_DIR, f"phase4_sim_{name}.png"))
+
+    # c) ROI capture
+    errors += check_roi(roi_ref)
     return errors
 
 
@@ -141,18 +191,18 @@ def main():
     print(f"Compiled in {time.time() - t0:.1f} s")
 
     all_ok = True
-    for name, gray, overlay, rx, ry, digit in TESTS:
+    for name, gray, overlay, rx, ry, digit, inv, then, thr in TESTS:
         t0 = time.time()
-        args = [os.path.join(VIVADO_BIN, "xsim.bat"), "tb_snap", "-runall",
-                "-testplusarg", f"gray{gray}", "-testplusarg", f"overlay{overlay}",
-                "-testplusarg", f"roix{rx}", "-testplusarg", f"roiy{ry}",
-                "-testplusarg", f"digit{digit}"]
+        args = [os.path.join(VIVADO_BIN, "xsim.bat"), "tb_snap", "-runall"]
+        for key, val in (("gray", gray), ("overlay", overlay), ("roix", rx), ("roiy", ry),
+                         ("digit", digit), ("inv", inv), ("then", then), ("thr", thr)):
+            args += ["-testplusarg", f"{key}{val}"]
         run(args, os.path.join(SIM_DIR, f"xsim_{name}.log"))
-        errors = check(name, in_words, img, gray, overlay, rx, ry, digit)
+        errors = check(name, in_words, img, gray, overlay, rx, ry, digit, inv, then, thr)
         status = "PASS" if not errors else "FAIL"
         all_ok &= not errors
-        print(f"[{status}] {name:14s} gray={gray} overlay={overlay} roi=({rx},{ry}) digit={digit}"
-              f"  ({time.time() - t0:.1f} s)")
+        print(f"[{status}] {name:14s} gray={gray} overlay={overlay} roi=({rx},{ry}) digit={digit} "
+              f"inv={inv} thresh={'%d' % thr if then else 'off'}  ({time.time() - t0:.1f} s)")
         for e in errors:
             print("        " + e)
 

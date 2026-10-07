@@ -64,14 +64,18 @@ set_property -dict { PACKAGE_PIN B19   IOSTANDARD TMDS_33  } [get_ports { hdmi_t
 
 ## ---------------------------------------------------------------------------
 ## Clock domain crossings (see docs/CDC.md)
-## The board clock family (sysclk, 200 MHz ref clock) and the HDMI clock family
-## (pixel clock, 5x serial clocks) come from different oscillators, so they are
-## asynchronous. Every signal that crosses between them goes through a
-## synchronizer (inside the Digilent IP, or cdc_sync_2ff in our RTL).
+## Three clock families from three different sources, so they are asynchronous:
+##   1. board clock (sysclk -> clk_sys, 200 MHz ref clock)
+##   2. HDMI clock (recovered pixel clock, 5x serial clocks)
+##   3. clk_fpga_0 = clk_acc, 100 MHz from the Zynq PS (AXI-Lite, later the CNN)
+## Every signal that crosses between them goes through a synchronizer
+## (Digilent IP internals, cdc_sync_2ff, cdc_pulse_sync, cdc_bus_sync, or the
+## dual-clock ROI block RAM).
 ## ---------------------------------------------------------------------------
 set_clock_groups -asynchronous \
     -group [get_clocks -include_generated_clocks -of_objects [get_ports sysclk]] \
-    -group [get_clocks -include_generated_clocks hdmi_rx_clk]
+    -group [get_clocks -include_generated_clocks hdmi_rx_clk] \
+    -group [get_clocks -include_generated_clocks clk_fpga_0]
 
 ## Slow, human-speed I/O: no timing requirement (inputs are synchronized in RTL).
 set_false_path -to   [get_ports { led[*] hdmi_rx_hpd }]

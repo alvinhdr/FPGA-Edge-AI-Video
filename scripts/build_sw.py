@@ -92,6 +92,11 @@ try:
     app = client.create_app_component(name=APP_NAME, platform=xpfm, domain=DOMAIN)
     src_files = [os.path.basename(p) for p in glob.glob(os.path.join(SRC_DIR, "*.[ch]"))]
     app.import_files(from_loc=SRC_DIR, files=src_files, dest_dir_in_cmp="src")
+    # Shared headers (register map) from sw/common
+    common_dir = os.path.join(ROOT_DIR, "sw", "common")
+    common = [os.path.basename(p) for p in glob.glob(os.path.join(common_dir, "*.h"))]
+    if common:
+        app.import_files(from_loc=common_dir, files=common, dest_dir_in_cmp="src")
     app.build()
 
     # 4. Copy the ELF to build/sw/

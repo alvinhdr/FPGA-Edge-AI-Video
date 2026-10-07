@@ -2,7 +2,8 @@
 // File   : top.sv
 // Project: Real-Time Edge AI Video Processor on FPGA
 // Board  : Digilent Zybo Z7-10
-// Purpose: Top level. Phase 2 = HDMI pass-through + pixel pipeline (overlay, gray).
+// Purpose: Top level. Phase 4 = HDMI pass-through + pixel pipeline + ROI capture
+//          + AXI-Lite registers for the ARM.
 //
 //   Laptop --HDMI--> dvi2rgb --(RGB + sync, clk_pix 74.25 MHz)--> pixel_pipeline
 //                                                        --> rgb2dvi --HDMI--> Monitor
@@ -140,12 +141,38 @@ module top (
     assign hdmi_rx_hpd = ref_locked;
 
     // -------------------------------------------------------------------------
-    // Pixel pipeline (all on clk_pix): position counter, gray view, ROI box, digit
+    // Settings from the ARM (clk_acc) -> clk_pix, through a req/ack bus handshake
+    // (multi-bit values must change all bits together; docs/CDC.md).
+    // Before the ARM runs, clk_acc is stopped and the INIT values are used.
     // -------------------------------------------------------------------------
     localparam logic [10:0] ROI_X0_DEFAULT = 11'd528;   // ROI = x 528..751 (center of 1280)
     localparam logic [10:0] ROI_Y0_DEFAULT = 11'd248;   //       y 248..471 (center of 720)
     localparam logic [3:0]  TEST_DIGIT     = 4'd7;      // fixed until the CNN gives a result
+    localparam int          CFG_W          = 33;
+    // {roi_x0[10:0], roi_y0[10:0], invert, thresh_en, freeze, thresh[7:0]}
+    localparam logic [CFG_W-1:0] CFG_INIT  = {ROI_X0_DEFAULT, ROI_Y0_DEFAULT, 1'b1, 1'b0, 1'b0, 8'd64};
 
+    logic              clk_acc, rst_acc_n;
+    logic              acc_invert, acc_thresh_en, acc_freeze;
+    logic [7:0]        acc_thresh;
+    logic [10:0]       acc_roi_x0, acc_roi_y0;
+    logic [CFG_W-1:0]  cfg_pix;
+    logic [10:0]       pix_roi_x0, pix_roi_y0;
+    logic              pix_invert, pix_thresh_en, pix_freeze;
+    logic [7:0]        pix_thresh;
+
+    cdc_bus_sync #(.W(CFG_W), .INIT(CFG_INIT)) u_cfg_sync (
+        .clk_src (clk_acc),
+        .i_data  ({acc_roi_x0, acc_roi_y0, acc_invert, acc_thresh_en, acc_freeze, acc_thresh}),
+        .clk_dst (clk_pix),
+        .o_data  (cfg_pix)
+    );
+    assign {pix_roi_x0, pix_roi_y0, pix_invert, pix_thresh_en, pix_freeze, pix_thresh} = cfg_pix;
+
+    // -------------------------------------------------------------------------
+    // Pixel pipeline (all on clk_pix): position, gray view, ROI box, AI view,
+    // digit, and the ROI capture (224x224 -> 28x28)
+    // -------------------------------------------------------------------------
     // Switches are asynchronous to clk_pix -> 2-flop synchronizers (docs/CDC.md)
     logic sw_gray_pix, sw_hide_pix;
     cdc_sync_2ff u_sync_sw0 (.clk_dst(clk_pix), .d_async(sw[0]), .q_sync(sw_gray_pix));
@@ -154,16 +181,55 @@ module top (
     video_pkg::video_t rx_vid, tx_vid;
     assign rx_vid = '{data: rx_data, de: rx_de, hs: rx_hsync, vs: rx_vsync};
 
+    logic        roi_we, frame_toggle_pix, ready_bank_pix;
+    logic [10:0] roi_waddr;
+    logic [7:0]  roi_wdata;
+
     pixel_pipeline u_pixel_pipeline (
-        .clk_pix      (clk_pix),
-        .i_vid        (rx_vid),
-        .o_vid        (tx_vid),
-        .i_gray_en    (sw_gray_pix),
-        .i_overlay_en (~sw_hide_pix),
-        .i_roi_x0     (ROI_X0_DEFAULT),
-        .i_roi_y0     (ROI_Y0_DEFAULT),
-        .i_digit      (TEST_DIGIT)
+        .clk_pix        (clk_pix),
+        .i_vid          (rx_vid),
+        .o_vid          (tx_vid),
+        .i_gray_en      (sw_gray_pix),
+        .i_overlay_en   (~sw_hide_pix),
+        .i_roi_x0       (pix_roi_x0),
+        .i_roi_y0       (pix_roi_y0),
+        .i_digit        (TEST_DIGIT),
+        .i_invert       (pix_invert),
+        .i_thresh_en    (pix_thresh_en),
+        .i_thresh       (pix_thresh),
+        .i_freeze       (pix_freeze),
+        .o_roi_we       (roi_we),
+        .o_roi_addr     (roi_waddr),
+        .o_roi_data     (roi_wdata),
+        .o_frame_toggle (frame_toggle_pix),
+        .o_ready_bank   (ready_bank_pix)
     );
+
+    // -------------------------------------------------------------------------
+    // ROI buffer: dual-clock block RAM, 2 banks x 1024 bytes (784 used).
+    // Port A: written by roi_capture (clk_pix). Port B: read by AXI-Lite (clk_acc).
+    // The two ports never touch the same bank at the same time (docs/CDC.md).
+    // -------------------------------------------------------------------------
+    logic [10:0] roi_raddr;
+    logic [7:0]  roi_rdata;
+
+    ram_tdp #(.DW(8), .AW(11)) u_roi_buffer (
+        .clk_a  (clk_pix),
+        .we_a   (roi_we),
+        .addr_a (roi_waddr),
+        .din_a  (roi_wdata),
+        .dout_a (),
+        .clk_b  (clk_acc),
+        .we_b   (1'b0),          // Phase 6: test-image injection writes here
+        .addr_b (roi_raddr),
+        .din_b  (8'd0),
+        .dout_b (roi_rdata)
+    );
+
+    // Frame-done event and ready bank: clk_pix -> clk_acc
+    logic frame_pulse_acc, ready_bank_acc;
+    cdc_pulse_sync u_frame_sync (.clk_dst(clk_acc), .i_src_toggle(frame_toggle_pix), .o_dst_pulse(frame_pulse_acc));
+    cdc_sync_2ff   u_bank_sync  (.clk_dst(clk_acc), .d_async(ready_bank_pix), .q_sync(ready_bank_acc));
 
     logic [23:0] tx_data;
     logic        tx_de;
@@ -193,30 +259,92 @@ module top (
     );
 
     // -------------------------------------------------------------------------
-    // Zynq Processing System (ARM). Block design "ps_bd".
+    // Zynq Processing System (ARM). Block design "ps_bd": PS + AXI-Lite master
+    // port (M_AXI_LITE, base 0x43C0_0000) + clk_acc (100 MHz) and its reset.
     // -------------------------------------------------------------------------
+    logic [31:0] axi_awaddr, axi_wdata, axi_araddr, axi_rdata;
+    logic [3:0]  axi_wstrb;
+    logic [1:0]  axi_bresp, axi_rresp;
+    logic        axi_awvalid, axi_awready, axi_wvalid, axi_wready, axi_bvalid, axi_bready;
+    logic        axi_arvalid, axi_arready, axi_rvalid, axi_rready;
+
     ps_bd_wrapper u_ps (
-        .DDR_addr          (DDR_addr),
-        .DDR_ba            (DDR_ba),
-        .DDR_cas_n         (DDR_cas_n),
-        .DDR_ck_n          (DDR_ck_n),
-        .DDR_ck_p          (DDR_ck_p),
-        .DDR_cke           (DDR_cke),
-        .DDR_cs_n          (DDR_cs_n),
-        .DDR_dm            (DDR_dm),
-        .DDR_dq            (DDR_dq),
-        .DDR_dqs_n         (DDR_dqs_n),
-        .DDR_dqs_p         (DDR_dqs_p),
-        .DDR_odt           (DDR_odt),
-        .DDR_ras_n         (DDR_ras_n),
-        .DDR_reset_n       (DDR_reset_n),
-        .DDR_we_n          (DDR_we_n),
-        .FIXED_IO_ddr_vrn  (FIXED_IO_ddr_vrn),
-        .FIXED_IO_ddr_vrp  (FIXED_IO_ddr_vrp),
-        .FIXED_IO_mio      (FIXED_IO_mio),
-        .FIXED_IO_ps_clk   (FIXED_IO_ps_clk),
-        .FIXED_IO_ps_porb  (FIXED_IO_ps_porb),
-        .FIXED_IO_ps_srstb (FIXED_IO_ps_srstb)
+        .DDR_addr            (DDR_addr),
+        .DDR_ba              (DDR_ba),
+        .DDR_cas_n           (DDR_cas_n),
+        .DDR_ck_n            (DDR_ck_n),
+        .DDR_ck_p            (DDR_ck_p),
+        .DDR_cke             (DDR_cke),
+        .DDR_cs_n            (DDR_cs_n),
+        .DDR_dm              (DDR_dm),
+        .DDR_dq              (DDR_dq),
+        .DDR_dqs_n           (DDR_dqs_n),
+        .DDR_dqs_p           (DDR_dqs_p),
+        .DDR_odt             (DDR_odt),
+        .DDR_ras_n           (DDR_ras_n),
+        .DDR_reset_n         (DDR_reset_n),
+        .DDR_we_n            (DDR_we_n),
+        .FIXED_IO_ddr_vrn    (FIXED_IO_ddr_vrn),
+        .FIXED_IO_ddr_vrp    (FIXED_IO_ddr_vrp),
+        .FIXED_IO_mio        (FIXED_IO_mio),
+        .FIXED_IO_ps_clk     (FIXED_IO_ps_clk),
+        .FIXED_IO_ps_porb    (FIXED_IO_ps_porb),
+        .FIXED_IO_ps_srstb   (FIXED_IO_ps_srstb),
+        .M_AXI_LITE_araddr   (axi_araddr),
+        .M_AXI_LITE_arprot   (),
+        .M_AXI_LITE_arready  (axi_arready),
+        .M_AXI_LITE_arvalid  (axi_arvalid),
+        .M_AXI_LITE_awaddr   (axi_awaddr),
+        .M_AXI_LITE_awprot   (),
+        .M_AXI_LITE_awready  (axi_awready),
+        .M_AXI_LITE_awvalid  (axi_awvalid),
+        .M_AXI_LITE_bready   (axi_bready),
+        .M_AXI_LITE_bresp    (axi_bresp),
+        .M_AXI_LITE_bvalid   (axi_bvalid),
+        .M_AXI_LITE_rdata    (axi_rdata),
+        .M_AXI_LITE_rready   (axi_rready),
+        .M_AXI_LITE_rresp    (axi_rresp),
+        .M_AXI_LITE_rvalid   (axi_rvalid),
+        .M_AXI_LITE_wdata    (axi_wdata),
+        .M_AXI_LITE_wready   (axi_wready),
+        .M_AXI_LITE_wstrb    (axi_wstrb),
+        .M_AXI_LITE_wvalid   (axi_wvalid),
+        .clk_acc             (clk_acc),
+        .rst_acc_n           (rst_acc_n)
+    );
+
+    // AXI-Lite register block (clk_acc). Only the low 16 address bits are decoded
+    // (the block design maps a 64 KB window at 0x43C0_0000).
+    axil_regs u_regs (
+        .clk           (clk_acc),
+        .rst_n         (rst_acc_n),
+        .s_axi_awaddr  (axi_awaddr[15:0]),
+        .s_axi_awvalid (axi_awvalid),
+        .s_axi_awready (axi_awready),
+        .s_axi_wdata   (axi_wdata),
+        .s_axi_wstrb   (axi_wstrb),
+        .s_axi_wvalid  (axi_wvalid),
+        .s_axi_wready  (axi_wready),
+        .s_axi_bresp   (axi_bresp),
+        .s_axi_bvalid  (axi_bvalid),
+        .s_axi_bready  (axi_bready),
+        .s_axi_araddr  (axi_araddr[15:0]),
+        .s_axi_arvalid (axi_arvalid),
+        .s_axi_arready (axi_arready),
+        .s_axi_rdata   (axi_rdata),
+        .s_axi_rresp   (axi_rresp),
+        .s_axi_rvalid  (axi_rvalid),
+        .s_axi_rready  (axi_rready),
+        .o_invert      (acc_invert),
+        .o_thresh_en   (acc_thresh_en),
+        .o_freeze      (acc_freeze),
+        .o_thresh      (acc_thresh),
+        .o_roi_x0      (acc_roi_x0),
+        .o_roi_y0      (acc_roi_y0),
+        .i_frame_pulse (frame_pulse_acc),
+        .i_ready_bank  (ready_bank_acc),
+        .o_roi_addr    (roi_raddr),
+        .i_roi_data    (roi_rdata)
     );
 
     // -------------------------------------------------------------------------

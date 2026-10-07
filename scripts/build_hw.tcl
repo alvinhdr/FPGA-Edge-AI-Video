@@ -121,15 +121,45 @@ foreach ip [get_ips] {
 }
 
 # ---------------------------------------------------------------------------
-# 3. Block design: Zynq PS only (ARM, DDR, UART). AXI comes in later phases.
+# 3. Block design: Zynq PS (ARM, DDR, UART) + the AXI path to our RTL.
+#    PS M_AXI_GP0 (AXI3) -> SmartConnect (converts to AXI4-Lite) -> external port
+#    M_AXI_LITE, which rtl/top.sv connects to rtl/axil_regs.sv.
+#    FCLK_CLK0 = 100 MHz = clk_acc; its reset comes from a proc_sys_reset.
+#    Address of our registers: AXIL_BASE (also in sw/common/edge_ai_regs.h).
 # ---------------------------------------------------------------------------
+set AXIL_BASE 0x43C00000
 create_bd_design ps_bd
 set ps [create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7 processing_system7_0]
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 \
     -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable"} $ps
-# No AXI master port yet (it would need a clock connected).
-set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {0}] $ps
+set_property -dict [list \
+    CONFIG.PCW_USE_M_AXI_GP0          {1} \
+    CONFIG.PCW_EN_CLK0_PORT           {1} \
+    CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100} \
+    CONFIG.PCW_EN_RST0_PORT           {1} ] $ps
 puts "INFO: PS UART1 enable = [get_property CONFIG.PCW_UART1_PERIPHERAL_ENABLE $ps], IO = [get_property CONFIG.PCW_UART1_UART1_IO $ps]"
+
+set rst [create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset rst_acc]
+set sc  [create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect smartconnect_0]
+set_property -dict [list CONFIG.NUM_SI {1} CONFIG.NUM_MI {1}] $sc
+
+set m_axi [create_bd_intf_port -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 M_AXI_LITE]
+set_property -dict [list CONFIG.PROTOCOL {AXI4LITE} CONFIG.ADDR_WIDTH {32} CONFIG.DATA_WIDTH {32} \
+                         CONFIG.FREQ_HZ {100000000}] $m_axi
+set clk_port [create_bd_port -dir O -type clk clk_acc]
+set_property -dict [list CONFIG.FREQ_HZ {100000000} CONFIG.ASSOCIATED_BUSIF {M_AXI_LITE}] $clk_port
+set rst_port [create_bd_port -dir O -type rst rst_acc_n]
+
+connect_bd_net [get_bd_pins $ps/FCLK_CLK0] [get_bd_pins $ps/M_AXI_GP0_ACLK] \
+    [get_bd_pins $sc/aclk] [get_bd_pins $rst/slowest_sync_clk] $clk_port
+connect_bd_net [get_bd_pins $ps/FCLK_RESET0_N] [get_bd_pins $rst/ext_reset_in]
+connect_bd_net [get_bd_pins $rst/peripheral_aresetn] [get_bd_pins $sc/aresetn] $rst_port
+connect_bd_intf_net [get_bd_intf_pins $ps/M_AXI_GP0] [get_bd_intf_pins $sc/S00_AXI]
+connect_bd_intf_net [get_bd_intf_pins $sc/M00_AXI] $m_axi
+
+assign_bd_address -offset $AXIL_BASE -range 64K \
+    -target_address_space [get_bd_addr_spaces $ps/Data] [get_bd_addr_segs M_AXI_LITE/Reg]
+puts "INFO: AXI-Lite registers at [format 0x%08X $AXIL_BASE] (64 KB)"
 validate_bd_design
 save_bd_design
 set bd_file [get_files ps_bd.bd]
@@ -149,6 +179,9 @@ set_property top top [current_fileset]
 update_compile_order -fileset sources_1
 
 if {$stage eq "project"} {
+    # Print the block design wrapper ports (to check rtl/top.sv against them)
+    set fh [open $wrapper r]; set txt [read $fh]; close $fh
+    foreach line [split $txt "\n"] { if {[regexp {^\s*(input|output|inout)} $line]} { puts "INFO: wrapper: [string trim $line]" } }
     puts "INFO: stage=project done."
     exit 0
 }
