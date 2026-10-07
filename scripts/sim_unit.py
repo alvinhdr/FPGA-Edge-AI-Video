@@ -9,6 +9,7 @@
 #   .venv\Scripts\python.exe scripts/sim_unit.py tb_cdc     (one test)
 # =============================================================================
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -21,6 +22,15 @@ TESTS = {
     "tb_axil_regs": ["rtl/ram_tdp.sv", "rtl/axil_regs.sv", "tb/tb_axil_regs.sv"],
     "tb_cnn_units": ["rtl/cnn_pkg.sv", "rtl/cnn_mac_array.sv", "rtl/cnn_requant.sv", "rtl/cnn_argmax.sv",
                      "tb/tb_cnn_units.sv"],
+    "tb_ai_core":   ["ml/export/cnn_params_pkg.sv", "rtl/cnn_pkg.sv", "rtl/ram_tdp.sv", "rtl/cnn_mac_array.sv",
+                     "rtl/cnn_requant.sv", "rtl/cnn_argmax.sv", "rtl/cnn_controller.sv", "rtl/cnn_top.sv",
+                     "rtl/axil_regs.sv", "rtl/ai_core.sv", "tb/tb_ai_core.sv"],
+}
+
+# Data files copied into the simulation folder ($readmemh reads them from there)
+DATA = {
+    "tb_ai_core": ["ml/export/wrom_p8.mem", "ml/export/brom_p8.mem", "ml/export/vec_full_input.mem",
+                   "ml/export/vec_full_acc.mem", "ml/export/vec_full_result.mem"],
 }
 
 
@@ -32,6 +42,8 @@ def run(cmd, cwd, log):
 def run_test(name, sources):
     sim_dir = os.path.join(ROOT, "build", "sim", name)
     os.makedirs(sim_dir, exist_ok=True)
+    for d in DATA.get(name, []):
+        shutil.copy(os.path.join(ROOT, d), sim_dir)
     with open(os.path.join(sim_dir, "sim.prj"), "w") as f:
         for s in sources:
             rel = os.path.relpath(os.path.join(ROOT, s), sim_dir).replace("\\", "/")

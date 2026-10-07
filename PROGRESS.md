@@ -96,6 +96,20 @@ test-image injection, live demo). Plan being presented to the user.
 - OOC build P=8 @100 MHz (`scripts/synth_cnn.tcl 8`): **WNS +0.507 ns**, 1211 LUT, 966 FF, 3.5 BRAM, 10 DSP, 0 critical
   warnings. Three critical paths fixed (docs/TIMING.md #4).
 
+## Phase 6 - integration (IN PROGRESS, 2026-10-07)
+- Done: `rtl/conf_bar_overlay.sv` (bar under digit, pipeline latency 7); digit/bar shown only when a CNN result exists.
+  `rtl/ai_core.sv` (clk_acc: axil_regs + cnn_top P=8 + inject RAM + auto/manual start + ROI port-B sharing + result regs).
+  `rtl/axil_regs.sv` extended (ID 0xED6E0006, CTRL bits cnn_enable/inject_mode, CNN_START 0x18, RESULT 0x1C, CNN_CYCLES 0x20,
+  CNN_COUNT 0x24, FC_ACC 0x40.., inject RAM 0x2000..). `rtl/top.sv`: ai_core + result cdc_bus_sync (13 bits) -> pixel pipeline.
+- Sims ALL PASS: sim_pixel_pipeline (4 tests incl. no_result), sim_unit (tb_cdc, tb_axil_regs updated, tb_cnn_units,
+  **tb_ai_core**: 10 inject-mode + 5 auto-mode inferences over AXI bit-exact, CNN_CYCLES=23965, cnn_enable=0 stops it).
+- Full build: timing met **WNS +0.653 ns**, 0 critical warnings, 2708 LUT (15.4%), 2985 FF, 5 BRAM.
+- `sw/edge_ai_demo/main.c` built (keys: p s j c w/a/z/d x i t + - h; PRED lines on change; `j` = 20-image injection
+  self-test vs golden, header `sw/common/mnist_test_images.h` from ml/export.py). `build/BOOT.bin` = FSBL+bit+edge_ai_demo.
+- **NEXT: board test** (not done yet): copy BOOT.bin to SD (`scripts/make_boot.py --app edge_ai_demo --copy-to G:\`),
+  boot from SD, PuTTY COM17: press `j` (expect 20/20 bit-exact), draw digits in Paint -> TV shows predicted digit + bar.
+  If good: PROGRESS/LEARNING/HANDOVER, tag phase-6-done.
+
 ## In progress
 - **Phase 4 (ROI capture + CDC), 2026-10-07, commit cda5fc1:**
   - RTL done: roi_capture, ai_view_overlay, ram_tdp, cdc_pulse_sync, cdc_bus_sync, axil_regs (base 0x43C00000,

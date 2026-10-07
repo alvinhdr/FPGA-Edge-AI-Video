@@ -12,7 +12,7 @@
 //   roi_writes.txt  : every ROI buffer write "w <addr hex> <data hex>", and "f" each
 //                     time the frame-done toggle changes
 // Plusargs (no "=", because Windows .bat files split arguments at "="):
-//   +gray<0|1> +overlay<0|1> +roix<n> +roiy<n> +digit<0..9> +inv<0|1> +then<0|1> +thr<n>
+//   +gray<0|1> +overlay<0|1> +roix<n> +roiy<n> +digit<0..9> +inv<0|1> +then<0|1> +thr<n> +conf<n> +rvalid<0|1>
 //   e.g. +gray1 +roix528
 // =============================================================================
 `timescale 1ns / 1ps
@@ -22,7 +22,7 @@ module tb_pixel_pipeline;
     import video_pkg::*;
 
     localparam real CLK_PERIOD_NS = 13.468;   // 74.25 MHz (720p60)
-    localparam int  LATENCY       = 6;        // must match pixel_pipeline
+    localparam int  LATENCY       = 7;        // must match pixel_pipeline
 
     logic             clk_pix = 1'b0;
     video_t           in_vid  = '0;
@@ -36,6 +36,8 @@ module tb_pixel_pipeline;
     int               invert     = 1;
     int               thresh_en  = 0;
     int               thresh     = 64;
+    int               conf       = 200;
+    int               rvalid     = 1;
 
     logic             roi_we, frame_tgl, ready_bank;
     logic [10:0]      roi_addr;
@@ -52,6 +54,8 @@ module tb_pixel_pipeline;
         .i_roi_x0       (roi_x0[POS_W-1:0]),
         .i_roi_y0       (roi_y0[POS_W-1:0]),
         .i_digit        (digit[3:0]),
+        .i_conf         (conf[7:0]),
+        .i_result_valid (rvalid[0]),
         .i_invert       (invert[0]),
         .i_thresh_en    (thresh_en[0]),
         .i_thresh       (thresh[7:0]),
@@ -90,6 +94,8 @@ module tb_pixel_pipeline;
         found = $value$plusargs("inv%d",      invert);
         found = $value$plusargs("then%d",     thresh_en);
         found = $value$plusargs("thr%d",      thresh);
+        found = $value$plusargs("conf%d",     conf);
+        found = $value$plusargs("rvalid%d",   rvalid);
         $display("TB: gray=%0d overlay=%0d roi=(%0d,%0d) digit=%0d invert=%0d thresh_en=%0d thresh=%0d",
                  gray_en, overlay_en, roi_x0, roi_y0, digit, invert, thresh_en, thresh);
 

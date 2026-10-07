@@ -44,7 +44,7 @@ def read_line(ser, timeout=3.0):
 def capture(ser):
     ser.reset_input_buffer()
     ser.write(b"c")
-    for _ in range(5):
+    for _ in range(20):          # skip live "PRED" lines until the ROI line arrives
         line = read_line(ser)
         if line.startswith("ROI "):
             hexdata = line[4:].strip()

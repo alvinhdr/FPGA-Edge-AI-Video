@@ -30,7 +30,7 @@ account after this; **always check `PROGRESS.md` and `git log` for anything newe
 | 3 ML golden model | DONE (tag `phase-3-done`) | float 98.24 %, int8 golden 98.25 % on MNIST test; independent PyTorch cross-check bit-exact (2,000 images) |
 | 4 ROI capture + CDC | DONE (tag `phase-4-done`) | sims pass; board (SD boot): AI view live, captures saved, first real capture 7 predicted correctly |
 | 5 CNN accelerator RTL | DONE (tag `phase-5-done`) | P=8: 1000/1000 images bit-exact vs golden, all layers bit-exact for P=1,2,4,8,16; 23,965 cycles = 240 us; OOC timing met @100 MHz (WNS +0.507 ns, 1211 LUT, 966 FF, 3.5 BRAM, 10 DSP) |
-| 6 Integration | **IN PROGRESS** (started 2026-10-07, planning) | |
+| 6 Integration | **IN PROGRESS** | RTL+sims done (tb_ai_core: 15 inferences over AXI bit-exact), full build timing met (WNS +0.653 ns, 0 CW), edge_ai_demo app + BOOT.bin built; **board test pending** |
 | 7 Benchmarks | not started | |
 | 8 Polish | not started | |
 
@@ -107,6 +107,14 @@ Board: power jumper USB, boot jumper JTAG, micro-USB in PROG/UART. UART: **11520
 - No on-board CNN numbers yet.
 
 ## 11. Next steps
+(UPDATE 2026-10-07, Phase 6: RTL, sims, full build and ARM app are DONE — see PROGRESS.md "Phase 6". Next:
+ 1. Board test: `.venv\Scripts\python.exe scripts/make_boot.py --app edge_ai_demo --copy-to G:\` (SD card; check the
+    drive letter first, only BOOT.bin is written), boot jumper SD, laptop Duplicate 1280x720, Paint full screen (F11),
+    PuTTY COM17: press `j` (expect "INJECT 20/20 bit-exact"), then draw digits in the box -> TV shows digit + bar.
+ 2. If good: update LEARNING (Phase 6 Q&A), PROGRESS, this file; tag phase-6-done.
+ 3. Phase 7: measurements (on-board MNIST accuracy via injection over UART, ARM software baseline in C, P sweep
+    resources with scripts/synth_cnn.tcl, docs/RESULTS.md).
+ Earlier text below is history.)
 (UPDATE after Phase 5: next = **Phase 6 integration**: put `cnn_top` in `rtl/top.sv` on clk_acc; share ROI buffer port B
 between AXI readback and the CNN input port (CNN reads the READY bank, start on frame-done pulse); result digit/conf
 -> `cdc_bus_sync` -> pixel pipeline digit overlay (+ confidence bar); AXI-Lite regs for result, cycles, enable, and
@@ -126,5 +134,5 @@ Recommended: `/model opus` `/effort high` for the Phase 6 plan. CNN sims: `.venv
 ## 13. Git state
 - Repo: https://github.com/alvinhdr/fpga-edge-ai-video (private), branch `main`.
 - Last commit before this file: `0d66d1c` "PROGRESS: Phase 4 status and open XDC issue". This file is committed right after it.
-- Tags: `phase-0-done`, `phase-1-done`, `phase-2-done`, `phase-3-done`.
+- Tags: `phase-0-done` .. `phase-5-done` (Phase 6 in progress).
 - Everything pushed (`main...origin/main` clean). Submodule `third_party/vivado-library` @ `f4613ff`.

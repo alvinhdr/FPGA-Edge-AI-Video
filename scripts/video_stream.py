@@ -28,7 +28,9 @@ DIGIT_X, DIGIT_Y, DIGIT_SCALE = 784, 248, 16
 AIV_X, AIV_Y, AIV_SCALE = 256, 248, 8      # AI view: 28x28 shown 8x = 224x224
 GRID = 28
 GREEN = (0, 255, 0)
-LATENCY = 6
+LATENCY = 7
+BAR_X, BAR_Y, BAR_W, BAR_H = 784, 392, 128, 12
+GRAY = (128, 128, 128)
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 FONT_FILE = os.path.join(ROOT_DIR, "rtl", "font_digits_8x8.mem")
@@ -125,7 +127,7 @@ def preprocess_roi(img, roi_x0, roi_y0, invert, thresh_en, thresh):
     return avg.astype(np.uint8)
 
 
-def reference_pipeline(img, gray_en, overlay_en, roi_x0, roi_y0, digit, ai_view=None):
+def reference_pipeline(img, gray_en, overlay_en, roi_x0, roi_y0, digit, ai_view=None, conf=0, valid=1):
     """ai_view: the 28x28 image shown in the AI view (= previous frame's capture),
     None means all zeros (the preview RAM starts at 0)."""
     out = img.copy()
@@ -144,7 +146,7 @@ def reference_pipeline(img, gray_en, overlay_en, roi_x0, roi_y0, digit, ai_view=
         big = np.kron(av, np.ones((AIV_SCALE, AIV_SCALE), np.uint8))
         size = GRID * AIV_SCALE
         out[AIV_Y:AIV_Y + size, AIV_X:AIV_X + size] = big[..., None]
-        if 0 <= digit <= 9:
+        if valid and 0 <= digit <= 9:
             glyph = load_font()[digit]
             for row in range(8):
                 for col in range(8):
@@ -152,4 +154,11 @@ def reference_pipeline(img, gray_en, overlay_en, roi_x0, roi_y0, digit, ai_view=
                         y0 = DIGIT_Y + row * DIGIT_SCALE
                         x0 = DIGIT_X + col * DIGIT_SCALE
                         out[y0:y0 + DIGIT_SCALE, x0:x0 + DIGIT_SCALE] = GREEN
+        if valid:
+            # confidence bar: gray outline, green fill of (conf >> 1) pixels (fill drawn over outline)
+            out[BAR_Y, BAR_X:BAR_X + BAR_W] = GRAY
+            out[BAR_Y + BAR_H - 1, BAR_X:BAR_X + BAR_W] = GRAY
+            out[BAR_Y:BAR_Y + BAR_H, BAR_X] = GRAY
+            out[BAR_Y:BAR_Y + BAR_H, BAR_X + BAR_W - 1] = GRAY
+            out[BAR_Y:BAR_Y + BAR_H, BAR_X:BAR_X + (conf >> 1)] = GREEN
     return out

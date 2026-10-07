@@ -38,15 +38,16 @@ VIVADO_BIN = os.environ.get("VIVADO_BIN", r"C:\Xilinx\2025.1\Vivado\bin")
 # Sources in compile order (package first). top.sv is not needed here.
 SOURCES = ["rtl/video_pkg.sv", "rtl/pix_pos_counter.sv", "rtl/rgb2gray.sv", "rtl/font_rom.sv",
            "rtl/roi_overlay.sv", "rtl/digit_overlay.sv", "rtl/ram_tdp.sv", "rtl/roi_capture.sv",
-           "rtl/ai_view_overlay.sv", "rtl/pixel_pipeline.sv", "tb/tb_pixel_pipeline.sv"]
+           "rtl/ai_view_overlay.sv", "rtl/conf_bar_overlay.sv", "rtl/pixel_pipeline.sv", "tb/tb_pixel_pipeline.sv"]
 
 # ROI x must be right of the AI view (x >= 480), so the AI view is always read before
 # the same line's ROI blocks are written (= "previous frame" semantics, exact in the reference).
 TESTS = [
-    # name,          gray, overlay, roi_x0, roi_y0, digit, invert, thresh_en, thresh
-    ("color_overlay", 0,    1,       528,    248,    7,     1,      0,         64),
-    ("gray_thresh",   1,    1,       900,    400,    3,     0,      1,         100),
-    ("passthrough",   0,    0,       528,    248,    5,     1,      0,         64),
+    # name,          gray, overlay, roi_x0, roi_y0, digit, invert, thresh_en, thresh, conf, valid
+    ("color_overlay", 0,    1,       528,    248,    7,     1,      0,         64,     200,  1),
+    ("gray_thresh",   1,    1,       900,    400,    3,     0,      1,         100,    37,   1),
+    ("passthrough",   0,    0,       528,    248,    5,     1,      0,         64,     255,  1),
+    ("no_result",     0,    1,       528,    248,    9,     1,      0,         64,     255,  0),
 ]
 
 
@@ -135,7 +136,7 @@ def check_roi(roi_ref):
     return errors
 
 
-def check(name, in_words, img, gray, overlay, roi_x0, roi_y0, digit, inv, then, thr):
+def check(name, in_words, img, gray, overlay, roi_x0, roi_y0, digit, inv, then, thr, conf, valid):
     out_words = vs.read_stream(os.path.join(SIM_DIR, "stream_out.txt"))
     errors = []
 
@@ -161,7 +162,7 @@ def check(name, in_words, img, gray, overlay, roi_x0, roi_y0, digit, inv, then, 
         errors.append(f"expected 2 output frames, got {len(frames)}")
     for i, fr in enumerate(frames):
         ref = vs.reference_pipeline(img, gray, overlay, roi_x0, roi_y0, digit,
-                                    ai_view=None if i == 0 else roi_ref)
+                                    ai_view=None if i == 0 else roi_ref, conf=conf, valid=valid)
         diff = np.any(fr != ref, axis=-1)
         if diff.any():
             yx = np.argwhere(diff)[0]
@@ -191,14 +192,15 @@ def main():
     print(f"Compiled in {time.time() - t0:.1f} s")
 
     all_ok = True
-    for name, gray, overlay, rx, ry, digit, inv, then, thr in TESTS:
+    for name, gray, overlay, rx, ry, digit, inv, then, thr, conf, valid in TESTS:
         t0 = time.time()
         args = [os.path.join(VIVADO_BIN, "xsim.bat"), "tb_snap", "-runall"]
         for key, val in (("gray", gray), ("overlay", overlay), ("roix", rx), ("roiy", ry),
-                         ("digit", digit), ("inv", inv), ("then", then), ("thr", thr)):
+                         ("digit", digit), ("inv", inv), ("then", then), ("thr", thr),
+                         ("conf", conf), ("rvalid", valid)):
             args += ["-testplusarg", f"{key}{val}"]
         run(args, os.path.join(SIM_DIR, f"xsim_{name}.log"))
-        errors = check(name, in_words, img, gray, overlay, rx, ry, digit, inv, then, thr)
+        errors = check(name, in_words, img, gray, overlay, rx, ry, digit, inv, then, thr, conf, valid)
         status = "PASS" if not errors else "FAIL"
         all_ok &= not errors
         print(f"[{status}] {name:14s} gray={gray} overlay={overlay} roi=({rx},{ry}) digit={digit} "

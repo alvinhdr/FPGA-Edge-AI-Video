@@ -28,7 +28,12 @@ module tb_axil_regs;
     logic [1:0]  bresp, rresp;
     logic [31:0] rdata;
 
-    logic        invert, thresh_en, freeze, frame_pulse = 0, ready_bank = 0;
+    logic        invert, thresh_en, freeze, cnn_enable, inject_mode, cnn_start, frame_pulse = 0, ready_bank = 0;
+    logic        inj_we;
+    logic [9:0]  inj_addr;
+    logic [7:0]  inj_data;
+    logic signed [31:0] fc_acc [10];
+    initial foreach (fc_acc[k]) fc_acc[k] = 32'(k * 1000 - 3000);
     logic [7:0]  thresh, roi_data;
     logic [10:0] roi_x0, roi_y0, roi_addr;
 
@@ -48,10 +53,13 @@ module tb_axil_regs;
         .s_axi_bresp(bresp), .s_axi_bvalid(bvalid), .s_axi_bready(bready),
         .s_axi_araddr(araddr), .s_axi_arvalid(arvalid), .s_axi_arready(arready),
         .s_axi_rdata(rdata), .s_axi_rresp(rresp), .s_axi_rvalid(rvalid), .s_axi_rready(rready),
-        .o_invert(invert), .o_thresh_en(thresh_en), .o_freeze(freeze), .o_thresh(thresh),
-        .o_roi_x0(roi_x0), .o_roi_y0(roi_y0),
-        .i_frame_pulse(frame_pulse), .i_ready_bank(ready_bank),
-        .o_roi_addr(roi_addr), .i_roi_data(roi_data));
+        .o_invert(invert), .o_thresh_en(thresh_en), .o_freeze(freeze), .o_cnn_enable(cnn_enable),
+        .o_inject_mode(inject_mode), .o_thresh(thresh), .o_roi_x0(roi_x0), .o_roi_y0(roi_y0),
+        .o_cnn_start(cnn_start), .i_frame_pulse(frame_pulse), .i_ready_bank(ready_bank),
+        .i_cnn_busy(1'b0), .i_result_valid(1'b1), .i_digit(4'd7), .i_conf(8'd200),
+        .i_cnn_cycles(32'd23965), .i_cnn_count(32'd5), .i_fc_acc(fc_acc),
+        .o_roi_addr(roi_addr), .i_roi_data(roi_data),
+        .o_inj_we(inj_we), .o_inj_addr(inj_addr), .o_inj_data(inj_data));
 
     int errors = 0;
 
@@ -111,19 +119,19 @@ module tb_axil_regs;
         repeat (2) @(posedge clk);
 
         // Reset values
-        expect_read(16'h0000, 32'hED6E_0004, "ID");
-        expect_read(16'h0004, 32'h0000_0001, "CTRL reset (invert on)");
+        expect_read(16'h0000, 32'hED6E_0006, "ID");
+        expect_read(16'h0004, 32'h0000_0009, "CTRL reset (invert on, cnn_enable on)");
         expect_read(16'h0008, 32'd64,        "THRESH reset");
         expect_read(16'h000C, {5'd0, 11'd248, 5'd0, 11'd528}, "ROI_POS reset");
         expect_read(16'h0014, 32'd0,         "FRAME_CNT reset");
-        if (!(invert && !thresh_en && !freeze && thresh == 64 && roi_x0 == 528 && roi_y0 == 248)) begin
+        if (!(invert && !thresh_en && !freeze && cnn_enable && !inject_mode && thresh == 64 && roi_x0 == 528 && roi_y0 == 248)) begin
             $display("ERROR: output ports do not show the reset values"); errors++;
         end
 
         // Write / read back, with masking of unused bits
-        axi_write(16'h0004, 32'hFFFF_FFFE);           // invert 0, thresh_en 1, freeze 1
-        expect_read(16'h0004, 32'h0000_0006, "CTRL write (masked)");
-        if (invert || !thresh_en || !freeze) begin $display("ERROR: CTRL outputs"); errors++; end
+        axi_write(16'h0004, 32'hFFFF_FFFE);           // invert 0, thresh_en, freeze, cnn_enable, inject_mode 1
+        expect_read(16'h0004, 32'h0000_001E, "CTRL write (masked)");
+        if (invert || !thresh_en || !freeze || !cnn_enable || !inject_mode) begin $display("ERROR: CTRL outputs"); errors++; end
         axi_write(16'h0008, 32'h1234_5678);
         expect_read(16'h0008, 32'h0000_0078, "THRESH write (masked to 8 bits)");
         axi_write(16'h000C, {5'h1F, 11'd400, 5'h1F, 11'd900});
@@ -136,7 +144,7 @@ module tb_axil_regs;
 
         // Writes to read-only registers are ignored
         axi_write(16'h0000, 32'h0);
-        expect_read(16'h0000, 32'hED6E_0004, "ID is read-only");
+        expect_read(16'h0000, 32'hED6E_0006, "ID is read-only");
 
         // Frame counter and status
         repeat (3) begin @(posedge clk); frame_pulse <= 1; @(posedge clk); frame_pulse <= 0; end
@@ -153,7 +161,20 @@ module tb_axil_regs;
         ready_bank <= 1;
         for (int i = 0; i < 784; i += 37) expect_read(16'h1000 + 16'(4 * i), 32'((i * 7 + 100) & 8'hFF), "ROI bank 1");
         expect_read(16'h1000 + 16'(4 * 784), 32'd0,  "ROI index 784 (out of range) reads 0");
-        expect_read(16'h0040, 32'hDEAD_BEEF,         "unused address");
+        expect_read(16'h0080, 32'hDEAD_BEEF,         "unused address");
+        // Phase 6 registers
+        expect_read(16'h001C, {1'b0, 14'd0, 1'b1, 8'd200, 4'd0, 4'd7}, "RESULT");
+        expect_read(16'h0020, 32'd23965, "CNN_CYCLES");
+        expect_read(16'h0024, 32'd5,     "CNN_COUNT");
+        for (int k = 0; k < 10; k++) expect_read(16'h0040 + 16'(4 * k), 32'(k * 1000 - 3000), "FC_ACC");
+        fork
+            axi_write(16'h0018, 32'h1);
+            begin @(posedge cnn_start); end
+        join
+        fork
+            axi_write(16'h2000 + 16'(4 * 783), 32'hA5);
+            begin @(posedge inj_we); #1 if (inj_addr != 783 || inj_data != 8'hA5) begin $display("ERROR: inject write"); errors++; end end
+        join
 
         if (errors == 0) $display("TEST PASSED");
         else             $display("TEST FAILED (%0d errors)", errors);

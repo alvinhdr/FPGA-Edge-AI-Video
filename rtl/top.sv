@@ -2,8 +2,8 @@
 // File   : top.sv
 // Project: Real-Time Edge AI Video Processor on FPGA
 // Board  : Digilent Zybo Z7-10
-// Purpose: Top level. Phase 4 = HDMI pass-through + pixel pipeline + ROI capture
-//          + AXI-Lite registers for the ARM.
+// Purpose: Top level. Phase 6 = full system: HDMI pass-through + pixel pipeline +
+//          ROI capture + CNN accelerator (ai_core, clk_acc) + live result overlay.
 //
 //   Laptop --HDMI--> dvi2rgb --(RGB + sync, clk_pix 74.25 MHz)--> pixel_pipeline
 //                                                        --> rgb2dvi --HDMI--> Monitor
@@ -147,7 +147,6 @@ module top (
     // -------------------------------------------------------------------------
     localparam logic [10:0] ROI_X0_DEFAULT = 11'd528;   // ROI = x 528..751 (center of 1280)
     localparam logic [10:0] ROI_Y0_DEFAULT = 11'd248;   //       y 248..471 (center of 720)
-    localparam logic [3:0]  TEST_DIGIT     = 4'd7;      // fixed until the CNN gives a result
     localparam int          CFG_W          = 33;
     // {roi_x0[10:0], roi_y0[10:0], invert, thresh_en, freeze, thresh[7:0]}
     localparam logic [CFG_W-1:0] CFG_INIT  = {ROI_X0_DEFAULT, ROI_Y0_DEFAULT, 1'b1, 1'b0, 1'b0, 8'd64};
@@ -168,6 +167,18 @@ module top (
         .o_data  (cfg_pix)
     );
     assign {pix_roi_x0, pix_roi_y0, pix_invert, pix_thresh_en, pix_freeze, pix_thresh} = cfg_pix;
+
+    // CNN result (clk_acc) -> clk_pix, same req/ack handshake: {valid, digit, conf} = 13 bits
+    logic        acc_res_valid, pix_res_valid;
+    logic [3:0]  acc_digit, pix_digit;
+    logic [7:0]  acc_conf, pix_conf;
+
+    cdc_bus_sync #(.W(13), .INIT('0)) u_result_sync (
+        .clk_src (clk_acc),
+        .i_data  ({acc_res_valid, acc_digit, acc_conf}),
+        .clk_dst (clk_pix),
+        .o_data  ({pix_res_valid, pix_digit, pix_conf})
+    );
 
     // -------------------------------------------------------------------------
     // Pixel pipeline (all on clk_pix): position, gray view, ROI box, AI view,
@@ -193,7 +204,9 @@ module top (
         .i_overlay_en   (~sw_hide_pix),
         .i_roi_x0       (pix_roi_x0),
         .i_roi_y0       (pix_roi_y0),
-        .i_digit        (TEST_DIGIT),
+        .i_digit        (pix_digit),
+        .i_conf         (pix_conf),
+        .i_result_valid (pix_res_valid),
         .i_invert       (pix_invert),
         .i_thresh_en    (pix_thresh_en),
         .i_thresh       (pix_thresh),
@@ -220,7 +233,7 @@ module top (
         .din_a  (roi_wdata),
         .dout_a (),
         .clk_b  (clk_acc),
-        .we_b   (1'b0),          // Phase 6: test-image injection writes here
+        .we_b   (1'b0),          // read-only from clk_acc (test images use the inject RAM)
         .addr_b (roi_raddr),
         .din_b  (8'd0),
         .dout_b (roi_rdata)
@@ -313,38 +326,41 @@ module top (
         .rst_acc_n           (rst_acc_n)
     );
 
-    // AXI-Lite register block (clk_acc). Only the low 16 address bits are decoded
-    // (the block design maps a 64 KB window at 0x43C0_0000).
-    axil_regs u_regs (
-        .clk           (clk_acc),
-        .rst_n         (rst_acc_n),
-        .s_axi_awaddr  (axi_awaddr[15:0]),
-        .s_axi_awvalid (axi_awvalid),
-        .s_axi_awready (axi_awready),
-        .s_axi_wdata   (axi_wdata),
-        .s_axi_wstrb   (axi_wstrb),
-        .s_axi_wvalid  (axi_wvalid),
-        .s_axi_wready  (axi_wready),
-        .s_axi_bresp   (axi_bresp),
-        .s_axi_bvalid  (axi_bvalid),
-        .s_axi_bready  (axi_bready),
-        .s_axi_araddr  (axi_araddr[15:0]),
-        .s_axi_arvalid (axi_arvalid),
-        .s_axi_arready (axi_arready),
-        .s_axi_rdata   (axi_rdata),
-        .s_axi_rresp   (axi_rresp),
-        .s_axi_rvalid  (axi_rvalid),
-        .s_axi_rready  (axi_rready),
-        .o_invert      (acc_invert),
-        .o_thresh_en   (acc_thresh_en),
-        .o_freeze      (acc_freeze),
-        .o_thresh      (acc_thresh),
-        .o_roi_x0      (acc_roi_x0),
-        .o_roi_y0      (acc_roi_y0),
-        .i_frame_pulse (frame_pulse_acc),
-        .i_ready_bank  (ready_bank_acc),
-        .o_roi_addr    (roi_raddr),
-        .i_roi_data    (roi_rdata)
+    // Accelerator clock domain: AXI-Lite registers + CNN + inject RAM (rtl/ai_core.sv).
+    // Only the low 16 address bits are decoded (64 KB window at 0x43C0_0000).
+    ai_core #(.P(8), .WROM_FILE("wrom_p8.mem"), .BROM_FILE("brom_p8.mem")) u_ai (
+        .clk            (clk_acc),
+        .rst_n          (rst_acc_n),
+        .s_axi_awaddr   (axi_awaddr[15:0]),
+        .s_axi_awvalid  (axi_awvalid),
+        .s_axi_awready  (axi_awready),
+        .s_axi_wdata    (axi_wdata),
+        .s_axi_wstrb    (axi_wstrb),
+        .s_axi_wvalid   (axi_wvalid),
+        .s_axi_wready   (axi_wready),
+        .s_axi_bresp    (axi_bresp),
+        .s_axi_bvalid   (axi_bvalid),
+        .s_axi_bready   (axi_bready),
+        .s_axi_araddr   (axi_araddr[15:0]),
+        .s_axi_arvalid  (axi_arvalid),
+        .s_axi_arready  (axi_arready),
+        .s_axi_rdata    (axi_rdata),
+        .s_axi_rresp    (axi_rresp),
+        .s_axi_rvalid   (axi_rvalid),
+        .s_axi_rready   (axi_rready),
+        .o_roi_addr     (roi_raddr),
+        .i_roi_data     (roi_rdata),
+        .i_frame_pulse  (frame_pulse_acc),
+        .i_ready_bank   (ready_bank_acc),
+        .o_invert       (acc_invert),
+        .o_thresh_en    (acc_thresh_en),
+        .o_freeze       (acc_freeze),
+        .o_thresh       (acc_thresh),
+        .o_roi_x0       (acc_roi_x0),
+        .o_roi_y0       (acc_roi_y0),
+        .o_result_valid (acc_res_valid),
+        .o_digit        (acc_digit),
+        .o_conf         (acc_conf)
     );
 
     // -------------------------------------------------------------------------

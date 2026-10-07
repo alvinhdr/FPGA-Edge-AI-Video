@@ -5,14 +5,15 @@
 //          in the pixel clock domain (no frame buffer).
 //
 //   i_vid -> [1] pix_pos_counter -> [2] gray view -> [3] roi_overlay (green box)
-//         -> [4,5] ai_view_overlay (28x28 AI input, 8x) -> [6] digit_overlay -> o_vid
+//         -> [4,5] ai_view_overlay (28x28 AI input, 8x) -> [6] digit_overlay (CNN result)
+//         -> [7] conf_bar_overlay -> o_vid
 //                |
 //                +-> roi_capture (side branch, original colors):
 //                    224x224 ROI -> gray/invert/8x8 average/threshold -> 28x28
 //                    -> o_roi_* writes (2-bank ROI buffer in top, read by clk_acc)
 //                    -> preview RAM (here, read by ai_view_overlay)
 //
-//   LATENCY = 6 pixel clocks (~81 ns at 74.25 MHz). DE/HS/VS go through the same
+//   LATENCY = 7 pixel clocks (~94 ns at 74.25 MHz). DE/HS/VS go through the same
 //   registers as the pixel data, so they stay aligned.
 // =============================================================================
 `default_nettype none
@@ -26,6 +27,7 @@ module pixel_pipeline
     parameter int    DIGIT_SCALE_LOG2 = 4,      // 4 -> 16x scale -> 128x128 pixel digit
     parameter int    AIV_X            = 256,    // AI view: 224x224 at the left of the ROI
     parameter int    AIV_Y            = 248,
+    parameter int    BAR_Y            = 392,    // confidence bar under the 128x128 digit
     parameter string FONT_FILE        = "font_digits_8x8.mem"
 ) (
     input  wire              clk_pix,
@@ -37,7 +39,9 @@ module pixel_pipeline
     input  wire              i_overlay_en,  // 1 = draw box, AI view and digit
     input  wire  [POS_W-1:0] i_roi_x0,
     input  wire  [POS_W-1:0] i_roi_y0,
-    input  wire  [3:0]       i_digit,       // digit to draw next to the box
+    input  wire  [3:0]       i_digit,       // CNN result digit, drawn next to the box
+    input  wire  [7:0]       i_conf,        // CNN confidence 0..255 (bar under the digit)
+    input  wire              i_result_valid,// 0 = no result yet: draw no digit and no bar
     input  wire              i_invert,      // ROI preprocessing (docs/QUANTIZATION.md section 8)
     input  wire              i_thresh_en,
     input  wire  [7:0]       i_thresh,
@@ -51,7 +55,7 @@ module pixel_pipeline
     output logic             o_ready_bank
 );
 
-    localparam int LATENCY = 6;   // documented for testbenches (see tb/)
+    localparam int LATENCY = 7;   // documented for testbenches (see tb/)
 
     // ---- Stage 1: pixel position ----------------------------------------
     video_t           s1_vid;
@@ -155,7 +159,10 @@ module pixel_pipeline
         .i_ram_data (prev_rdata)
     );
 
-    // ---- Stage 6: digit ----------------------------------------------------
+    // ---- Stage 6: digit (CNN result) --------------------------------------------
+    video_t           s6_vid;
+    logic [POS_W-1:0] s6_x, s6_y;
+
     digit_overlay #(
         .X0         (DIGIT_X),
         .Y0         (DIGIT_Y),
@@ -167,10 +174,21 @@ module pixel_pipeline
         .i_x     (s5_x),
         .i_y     (s5_y),
         .i_digit (i_digit),
-        .i_show  (i_overlay_en),
-        .o_vid   (o_vid),
-        .o_x     (),
-        .o_y     ()
+        .i_show  (i_overlay_en && i_result_valid),
+        .o_vid   (s6_vid),
+        .o_x     (s6_x),
+        .o_y     (s6_y)
+    );
+
+    // ---- Stage 7: confidence bar -------------------------------------------------
+    conf_bar_overlay #(.X0(DIGIT_X), .Y0(BAR_Y)) u_bar (
+        .clk_pix (clk_pix),
+        .i_vid   (s6_vid),
+        .i_x     (s6_x),
+        .i_y     (s6_y),
+        .i_show  (i_overlay_en && i_result_valid),
+        .i_conf  (i_conf),
+        .o_vid   (o_vid)
     );
 
 endmodule

@@ -174,6 +174,10 @@ add_files -norecurse [list $wrapper]
 add_files -norecurse [glob [file join $root_dir rtl *.sv]]
 # ROM contents (font) read with $readmemb by rtl/font_rom.sv
 add_files -norecurse [glob [file join $root_dir rtl *.mem]]
+# CNN: generated requant constants package + weight/bias ROMs for P = 8 (from ml/export.py)
+add_files -norecurse [list [file join $root_dir ml export cnn_params_pkg.sv] \
+                           [file join $root_dir ml export wrom_p8.mem] \
+                           [file join $root_dir ml export brom_p8.mem]]
 add_files -fileset constrs_1 -norecurse [glob [file join $root_dir constraints *.xdc]]
 # Read our XDC LAST: it refers to clocks that IP constraints create (clk_wiz input clock,
 # the PS clock clk_fpga_0). Read too early, those clocks do not exist yet (docs/TIMING.md #3).
