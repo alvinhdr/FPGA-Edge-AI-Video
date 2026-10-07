@@ -47,3 +47,6 @@ ml/data/
 Thumbs.db
 .vscode/
 .claude/settings.local.json
+
+# Vivado runtime leftovers
+dfx_runtime.txt
