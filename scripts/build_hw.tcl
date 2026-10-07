@@ -1,0 +1,174 @@
+# =============================================================================
+# File   : build_hw.tcl
+# Project: Real-Time Edge AI Video Processor on FPGA
+# Purpose: Build the whole Vivado project from source, in batch mode.
+#          Nothing hand-clicked is committed: this script IS the project.
+#
+# Usage (from the repo root):
+#   vivado -mode batch -nojournal -log build/vivado_build.log \
+#          -source scripts/build_hw.tcl -tclargs [stage]
+#
+#   stage = project   : create project + IPs + block design only (fast check)
+#           all       : project + synthesis + implementation + bitstream + XSA (default)
+#
+# Outputs (all in build/, which is git-ignored):
+#   build/vivado/                Vivado project
+#   build/edge_ai_video.bit      bitstream
+#   build/edge_ai_video.xsa      hardware description for Vitis
+#   build/reports/               timing, utilization, power, DRC reports
+# =============================================================================
+
+set stage [expr {[llength $argv] > 0 ? [lindex $argv 0] : "all"}]
+
+# ---------------------------------------------------------------------------
+# Paths and settings
+# ---------------------------------------------------------------------------
+set root_dir   [file normalize [file join [file dirname [info script]] ..]]
+set build_dir  [file join $root_dir build]
+set proj_dir   [file join $build_dir vivado]
+set rpt_dir    [file join $build_dir reports]
+set proj_name  edge_ai_video
+set part       xc7z010clg400-1
+set jobs       8
+
+file mkdir $build_dir $rpt_dir
+
+# ---------------------------------------------------------------------------
+# 1. Project
+# ---------------------------------------------------------------------------
+# Start clean: delete the old project so no stale IP folders are left behind.
+file delete -force $proj_dir
+create_project $proj_name $proj_dir -part $part -force
+
+# Use the newest installed Zybo Z7-10 board file (gives the PS preset: DDR, MIO, UART).
+set board_parts [lsort [get_board_parts -quiet digilentinc.com:zybo-z7-10:*]]
+if {[llength $board_parts] == 0} {
+    error "Zybo Z7-10 board files not found. Install Digilent board files."
+}
+set board_part [lindex $board_parts end]
+puts "INFO: using board part $board_part"
+set_property board_part $board_part [current_project]
+set_property target_language Verilog [current_project]
+set_property default_lib xil_defaultlib [current_project]
+
+# Digilent IP repository (git submodule, pinned commit)
+set vl_dir [file join $root_dir third_party vivado-library]
+set_property ip_repo_paths [list \
+    [file join $vl_dir ip dvi2rgb] \
+    [file join $vl_dir ip rgb2dvi] \
+    [file join $vl_dir if tmds_v1_0] ] [current_project]
+update_ip_catalog -rebuild
+
+# ---------------------------------------------------------------------------
+# 2. IP cores
+# ---------------------------------------------------------------------------
+set ip_dir [file join $proj_dir ip]
+file mkdir $ip_dir
+
+# 2a. 125 MHz -> 200 MHz reference clock for dvi2rgb (IDELAYCTRL + EDID logic),
+#     plus a 125 MHz copy (clk_sys) for our own logic. sysclk must drive ONLY the PLL:
+#     if it also drives fabric logic, Vivado adds a BUFG in front of the PLL, which is
+#     illegal in the PLL's default ZHOLD mode (DRC REQP-1712). See docs/TIMING.md.
+create_ip -name clk_wiz -vendor xilinx.com -library ip -module_name clk_wiz_ref -dir $ip_dir
+set_property -dict [list \
+    CONFIG.PRIMITIVE                  {PLL} \
+    CONFIG.PRIM_IN_FREQ               {125.000} \
+    CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {200.000} \
+    CONFIG.CLKOUT2_USED               {true} \
+    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {125.000} \
+    CONFIG.USE_RESET                  {false} \
+    CONFIG.USE_LOCKED                 {true} ] [get_ips clk_wiz_ref]
+
+# 2b. HDMI input. kClkRange=2 -> for pixel clocks >= 60 MHz (720p = 74.25 MHz).
+#     Same value as Digilent's Zybo-Z7-10 HDMI 2025.1 demo.
+create_ip -vlnv digilentinc.com:ip:dvi2rgb:2.0 -module_name dvi2rgb_0 -dir $ip_dir
+set_property -dict [list \
+    CONFIG.kClkRange      {2} \
+    CONFIG.kRstActiveHigh {false} \
+    CONFIG.kEmulateDDC    {true} \
+    CONFIG.kEdidFileName  {dgl_720p_cea.data} \
+    CONFIG.kAddBUFG       {true} \
+    CONFIG.kDebug         {false} ] [get_ips dvi2rgb_0]
+
+# 2c. HDMI output. Generates its own 5x serial clock with an MMCM.
+#     MMCM VCO = 74.25 MHz * 10 = 742.5 MHz (inside the -1 MMCM range 600-1200 MHz).
+create_ip -vlnv digilentinc.com:ip:rgb2dvi:1.4 -module_name rgb2dvi_0 -dir $ip_dir
+set_property -dict [list \
+    CONFIG.kGenerateSerialClk {true} \
+    CONFIG.kClkPrimitive      {MMCM} \
+    CONFIG.kClkRange          {2} \
+    CONFIG.kRstActiveHigh     {false} ] [get_ips rgb2dvi_0]
+
+generate_target {instantiation_template synthesis} [get_ips]
+
+# Print the real port list of every IP (to check top.sv against it)
+foreach ip [get_ips] {
+    set veo "[file rootname [get_property IP_FILE $ip]].veo"
+    puts "INFO: ===== instantiation template for $ip"
+    if {[file exists $veo]} {
+        set fh [open $veo r]; set txt [read $fh]; close $fh
+        foreach line [split $txt "\n"] { if {[regexp {^\s*\.} $line]} { puts "INFO:   $line" } }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# 3. Block design: Zynq PS only (ARM, DDR, UART). AXI comes in later phases.
+# ---------------------------------------------------------------------------
+create_bd_design ps_bd
+set ps [create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7 processing_system7_0]
+apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 \
+    -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable"} $ps
+# No AXI master port yet (it would need a clock connected).
+set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {0}] $ps
+puts "INFO: PS UART1 enable = [get_property CONFIG.PCW_UART1_PERIPHERAL_ENABLE $ps], IO = [get_property CONFIG.PCW_UART1_UART1_IO $ps]"
+validate_bd_design
+save_bd_design
+set bd_file [get_files ps_bd.bd]
+generate_target all $bd_file
+# make_wrapper returns a plain string; wrap it in [list] so a path with spaces stays one item.
+set wrapper [make_wrapper -files $bd_file -top]
+add_files -norecurse [list $wrapper]
+
+# ---------------------------------------------------------------------------
+# 4. Our sources and constraints
+# ---------------------------------------------------------------------------
+add_files -norecurse [glob [file join $root_dir rtl *.sv]]
+add_files -fileset constrs_1 -norecurse [glob [file join $root_dir constraints *.xdc]]
+set_property top top [current_fileset]
+update_compile_order -fileset sources_1
+
+if {$stage eq "project"} {
+    puts "INFO: stage=project done."
+    exit 0
+}
+
+# ---------------------------------------------------------------------------
+# 5. Synthesis, implementation, bitstream
+# ---------------------------------------------------------------------------
+launch_runs synth_1 -jobs $jobs
+wait_on_run synth_1
+if {[get_property PROGRESS [get_runs synth_1]] ne "100%"} { error "Synthesis failed" }
+
+launch_runs impl_1 -to_step write_bitstream -jobs $jobs
+wait_on_run impl_1
+if {[get_property PROGRESS [get_runs impl_1]] ne "100%"} { error "Implementation failed" }
+
+# ---------------------------------------------------------------------------
+# 6. Reports and outputs
+# ---------------------------------------------------------------------------
+open_run impl_1
+report_timing_summary -max_paths 10 -file [file join $rpt_dir timing_summary.rpt]
+report_utilization                 -file [file join $rpt_dir utilization.rpt]
+report_clock_utilization           -file [file join $rpt_dir clock_utilization.rpt]
+report_power                       -file [file join $rpt_dir power.rpt]
+report_drc                         -file [file join $rpt_dir drc.rpt]
+report_cdc -details                -file [file join $rpt_dir cdc.rpt]
+
+set bit_src [lindex [glob [file join $proj_dir $proj_name.runs impl_1 *.bit]] 0]
+file copy -force $bit_src [file join $build_dir $proj_name.bit]
+write_hw_platform -fixed -include_bit -force [file join $build_dir $proj_name.xsa]
+
+set wns [get_property STATS.WNS [get_runs impl_1]]
+set whs [get_property STATS.WHS [get_runs impl_1]]
+puts "INFO: ===== BUILD DONE. WNS = $wns ns, WHS = $whs ns"
+if {$wns < 0 || $whs < 0} { puts "CRITICAL WARNING: timing NOT met" }
