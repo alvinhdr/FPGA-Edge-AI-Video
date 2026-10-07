@@ -19,6 +19,8 @@ VIVADO_BIN = os.environ.get("VIVADO_BIN", r"C:\Xilinx\2025.1\Vivado\bin")
 TESTS = {
     "tb_cdc":       ["rtl/cdc_bus_sync.sv", "rtl/cdc_pulse_sync.sv", "tb/tb_cdc.sv"],
     "tb_axil_regs": ["rtl/ram_tdp.sv", "rtl/axil_regs.sv", "tb/tb_axil_regs.sv"],
+    "tb_cnn_units": ["rtl/cnn_pkg.sv", "rtl/cnn_mac_array.sv", "rtl/cnn_requant.sv", "rtl/cnn_argmax.sv",
+                     "tb/tb_cnn_units.sv"],
 }
 
 

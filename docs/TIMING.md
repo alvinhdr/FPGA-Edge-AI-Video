@@ -62,3 +62,23 @@ Kept `PROCESSING_ORDER LATE` (our XDC refers to IP-created clocks, so reading it
 **Lesson.** Check which step (synthesis or implementation) a warning comes from before drawing a
 conclusion, and verify a guess with `report_clocks` instead of assuming. My first explanation was
 wrong; checking the logs separately found the real cause.
+
+## 4. CNN accelerator at 100 MHz: three critical paths, fixed one by one (Phase 5)
+
+Out-of-context build of `rtl/cnn_top.sv` (P = 8) with `scripts/synth_cnn.tcl`. Each fix was
+re-verified bit-exact with `scripts/sim_cnn.py` before the next build.
+
+| Step | WNS | Critical path (from the timing report) | Fix |
+|---|---|---|---|
+| 1 | **-2.019 ns** | `cnn_argmax`: `top1 - top2`, `* MC`, `+ 2^(SC-1)` in ONE clock: 19 logic levels (13 CARRY4) | split into 3 clocks (S_DIFF, S_MUL, S_RND). Cost: +2 clocks per inference |
+| 2 | **-1.350 ns** | block-RAM read (no output register) → activation mux → multiplier in LUTs → 32-bit accumulate, one clock, 14 levels; only 4 DSPs used | register the MAC inputs after the memories; 2-stage MAC (multiply register, then accumulate) = DSP48 structure. Now 12 DSPs, LUTs halved (2328 → 1176). Controller DRAIN 2 → 4. Cost: +2 clocks per pooled position (23,523 → 23,965 cycles) |
+| 3 | **-0.814 ns** | controller input address `ci*HW*HW + row*HW + col` with layer-dependent HW: Vivado built real multipliers (2 DSP48 in the path) | one address formula per layer with constant sizes (28, 13, 169) → shifts/adds; same for the weight address |
+| done | **+0.507 ns** | requant input mux → DSP (3 levels) | — |
+
+Result (P = 8): 1211 LUT, 966 FF, 3.5 BRAM, 10 DSP, 23,965 cycles = 240 us per image.
+
+**Lessons.** (1) Read the path in the timing report, do not guess: each failure was somewhere else.
+(2) "Multiply and add in one clock" is the classic slow path; pipeline it the way the DSP48 is
+built. (3) Constants matter: the same formula with a variable size needs a multiplier, with a
+constant size only an adder. (4) A pipeline stage changes the timing of every flag that travels
+with the data; the bit-exact testbench is what makes such changes safe.

@@ -1,8 +1,8 @@
 # PROGRESS
 
 ## Current phase
-Phases 0-4 **DONE** (tags phase-0..4-done). **Phase 5 STARTED** (CNN accelerator RTL; plan approved 2026-10-07:
-P-wide MAC array (parameter), pooling fused into conv, wide weight ROM `ml/export/wrom_p{P}.mem`).
+Phases 0-5 **DONE** (tags phase-0..5-done). Next: **Phase 6** (integrate CNN with ROI buffer + overlay, AXI-Lite,
+test-image injection, live demo).
 
 ## Environment (checked 2026-10-07)
 - Board: **Digilent Zybo Z7-10** (XC7Z010-1CLG400C), confirmed by user
@@ -83,6 +83,18 @@ P-wide MAC array (parameter), pooling fused into conv, wide weight ROM `ml/expor
   1080p (box left of center). At 1080p the pixel clock is 148.5 MHz: outside our timing constraint and above the
   dvi2rgb MMCM VCO range (1485 > 1200 MHz) -> worked by luck. With Windows set to **1280x720** (Extend mode, or
   Duplicate with 1280x720) the box is centered. **Demo must use 1280x720.** TODO later: own EDID with only 720p.
+
+## Phase 5 - CNN accelerator RTL (DONE 2026-10-07)
+- RTL: `cnn_pkg.sv`, `cnn_mac_array.sv` (P lanes, 2-stage, DSP48), `cnn_requant.sv` (3 stages), `cnn_argmax.sv`
+  (top1/top2/conf, 3-clock conf math), `cnn_controller.sv` (loop FSM, per-layer constant address formulas, DRAIN=4),
+  `cnn_top.sv` (P1/P2 RAMs, wide weight/bias ROMs, fused max-pool, cycle counter). Params from generated
+  `ml/export/cnn_params_pkg.sv`; ROMs `ml/export/wrom_p{P}.mem`, `brom_p{P}.mem` (ml/export.py).
+- Verification: `scripts/sim_cnn.py`: P=8 **1000/1000 images bit-exact** (FC accs, digit, conf; 983/1000 correct = golden),
+  20 images all layers (P1, P2) bit-exact for P = 1, 2, 4, 8, 16. `scripts/sim_unit.py tb_cnn_units`: requant 2132 cases,
+  argmax 303 incl. ties, MAC 200 random sums: PASS.
+- Cycles/inference: P1 176,711; P2 89,251; P4 45,725; **P8 23,965 (240 us @100 MHz)**; P16 17,613.
+- OOC build P=8 @100 MHz (`scripts/synth_cnn.tcl 8`): **WNS +0.507 ns**, 1211 LUT, 966 FF, 3.5 BRAM, 10 DSP, 0 critical
+  warnings. Three critical paths fixed (docs/TIMING.md #4).
 
 ## In progress
 - **Phase 4 (ROI capture + CDC), 2026-10-07, commit cda5fc1:**

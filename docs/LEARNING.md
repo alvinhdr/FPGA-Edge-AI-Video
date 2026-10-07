@@ -147,3 +147,26 @@ A: The capture showed the reason: part of the Paint toolbar was inside the box (
 
 **Q: You said timing passed "by luck" and then corrected yourself. What happened?**
 A: A clock-group constraint gave a "no objects found" warning. I first guessed a constraint-order problem, but checking the logs separately showed the warning was only in synthesis (where the PS block is a black box); implementation had applied it correctly. I documented both the wrong guess and the real cause in TIMING.md, and moved the constraint to an implementation-only file.
+
+## CNN accelerator (Phase 5)
+
+- **MAC array**: P multiply-accumulate units working in parallel. Each clock, one input pixel goes to all P units; each multiplies it with the weight of its own output channel. P is a parameter (1..16).
+- **Output-channel parallelism**: the P units compute P different output channels at the same position, so they all share the same input pixel (one memory read feeds P MACs).
+- **Wide ROM word**: the P weights needed in one clock are stored side by side in one memory word, so one read gives all of them.
+- **Fused pooling**: max-pool done on the raw accumulators of the 2x2 window, then ONE requantization. Exact, because requantization is monotonic.
+- **Controller + datapath**: the FSM only makes addresses and flags; the datapath follows with fixed latencies. Flags travel through the same pipeline delays as the data.
+- **Out-of-context (OOC) build**: synthesizing and placing one block alone to measure its timing and size.
+- **Critical path / WNS**: the slowest register-to-register path; WNS (worst negative slack) < 0 means it is too slow for the clock.
+- **DSP48**: the hard multiplier block in the FPGA (25x18 multiply + 48-bit adder + registers).
+
+**Q: How fast is your accelerator and how did you get the number?**
+A: 23,965 clock cycles per image at P = 8, so 240 us at 100 MHz, about 70 times faster than the 16.7 ms frame time. The number comes from a cycle counter in the hardware, measured in simulation over 1,000 images (it is the same for every image because the work does not depend on the data).
+
+**Q: How did you verify it?**
+A: Bit-exact against the integer golden model: for 20 images I compare every intermediate layer (P1, P2 feature maps read from the accelerator's RAMs), the 10 FC accumulators, the digit and the confidence; then 1,000 MNIST images for the final outputs: 0 mismatches. I also ran every P value (1, 2, 4, 8, 16), and unit testbenches for requant (edge cases, all shifts), argmax (ties) and the MAC array.
+
+**Q: Why does going from 8 to 16 MACs give less than 2x?**
+A: Layer 1 has only 8 output channels, so half of 16 lanes are idle there, and each pooled position has a fixed overhead (pipeline drain + P write-back cycles) that does not shrink with P. Amdahl's law in small.
+
+**Q: Tell me about a timing problem you fixed.**
+A: The accelerator first failed 100 MHz by 2 ns. I fixed three different critical paths, one by one, always from the timing report: the confidence math (subtract, multiply, add in one clock) — split into 3 clocks; the MAC (RAM output → mux → multiply → accumulate in one clock) — registered inputs and a 2-stage MAC, which also moved the multipliers into DSPs and halved the LUTs; and the address generator, where a layer-dependent size created real multipliers — I wrote one formula per layer with constant sizes. Final slack +0.5 ns, re-verified bit-exact after every change.

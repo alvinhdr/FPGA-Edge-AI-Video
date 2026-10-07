@@ -29,7 +29,7 @@ account after this; **always check `PROGRESS.md` and `git log` for anything newe
 | 2 Pixel pipeline overlay | DONE (tag `phase-2-done`) | sim 3 tests bit-exact; board: green box + green "7", SW0 gray, SW1 hide; photo `docs/images/phase2_board_first_light_1080p.jpg` |
 | 3 ML golden model | DONE (tag `phase-3-done`) | float 98.24 %, int8 golden 98.25 % on MNIST test; independent PyTorch cross-check bit-exact (2,000 images) |
 | 4 ROI capture + CDC | DONE (tag `phase-4-done`) | sims pass; board (SD boot): AI view live, captures saved, first real capture 7 predicted correctly |
-| 5 CNN accelerator RTL | **IN PROGRESS** (started 2026-10-07) | plan: P parallel MACs (param), pooling fused into conv (max of raw acc, then requant), wide weight ROM `ml/export/wrom_p{P}.mem`, modules cnn_pkg/mac_array/requant/argmax/controller/top, TB vs vec_full + 1000 images |
+| 5 CNN accelerator RTL | DONE (tag `phase-5-done`) | P=8: 1000/1000 images bit-exact vs golden, all layers bit-exact for P=1,2,4,8,16; 23,965 cycles = 240 us; OOC timing met @100 MHz (WNS +0.507 ns, 1211 LUT, 966 FF, 3.5 BRAM, 10 DSP) |
 | 6 Integration | not started | |
 | 7 Benchmarks | not started | |
 | 8 Polish | not started | |
@@ -107,6 +107,11 @@ Board: power jumper USB, boot jumper JTAG, micro-USB in PROG/UART. UART: **11520
 - No on-board CNN numbers yet.
 
 ## 11. Next steps
+(UPDATE after Phase 5: next = **Phase 6 integration**: put `cnn_top` in `rtl/top.sv` on clk_acc; share ROI buffer port B
+between AXI readback and the CNN input port (CNN reads the READY bank, start on frame-done pulse); result digit/conf
+-> `cdc_bus_sync` -> pixel pipeline digit overlay (+ confidence bar); AXI-Lite regs for result, cycles, enable, and
+test-image injection (ARM writes an image, starts the CNN, reads the result); full build + timing; board demo.
+Recommended: `/model opus` `/effort high` for the Phase 6 plan. CNN sims: `.venv\Scripts\python.exe scripts/sim_cnn.py --p 8 --n 1000`.)
 (UPDATE: steps 1-4 below are DONE except collecting more captures. Next = collect ~10 captures per digit with `scripts/capture_roi.py --port COM17`, then Phase 5. SD card: `scripts/make_boot.py --copy-to G:\`, boot jumper on SD.)
 1. DONE: XDC fix, clean rebuild, CDC review. 2. DONE: `build/sw/roi_capture.elf` built (rebuild with `vitis.bat -s scripts/build_sw.py roi_capture` if `build/` is missing).
 3. Board test (user, 2 HDMI cables, laptop at 1280x720): `xsdb.bat scripts/program.tcl all roi_capture`; check TV shows AI view (white digit on black, left of box) when drawing dark on white in the box; PuTTY `s` status shows frames counting.
