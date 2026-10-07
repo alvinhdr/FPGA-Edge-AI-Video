@@ -1,0 +1,10 @@
+# Python packages for ml/ and scripts/ (install into the repo's .venv)
+# PyTorch CPU build:
+#   .venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# Everything else:
+#   .venv\Scripts\python.exe -m pip install -r ml/requirements.txt
+numpy
+pillow
+matplotlib
+pyserial
+tqdm

@@ -8,7 +8,11 @@ Phase 1 - HDMI pass-through: **IN PROGRESS** (hardware built, waiting for board 
 - OS: Windows 11 Home (10.0.26200)
 - Vivado 2025.1 and Vitis 2025.1 (unified IDE only, no `xsct`) at `C:\Xilinx\2025.1`
 - `xsdb`, `sdtgen`, `hw_server`, `bootgen` are in `C:\Xilinx\2025.1\Vivado\bin`
-- Python 3.13.15 (NumPy, Pillow installed; PyTorch, matplotlib, pyserial NOT yet installed)
+- Python 3.13.15. Project venv `.venv` (git-ignored) with torch 2.14.1+cpu, torchvision 0.29.1+cpu,
+  numpy 2.5.2, matplotlib 3.11.2, pyserial 3.5, tqdm, pillow. See `ml/requirements.txt`.
+  CPU build on purpose: the CNN is tiny; laptop has i5-12450H, 16 GB RAM (GPU RTX 2050 4 GB not used).
+- MNIST downloaded to `ml/data/MNIST/raw` (git-ignored) with `ml/download_mnist.py`.
+- Vitis edition upgraded to **Vitis Unified Software Platform** + Zynq-7000 (ARM toolchain present).
 - Git 2.55.0 (user: Alvin Hadar, hadaralvin@gmail.com); GitHub CLI 2.102.0, logged in as `alvinhdr`
 - Simulator: Vivado xsim (Verilator / Icarus / cocotb not installed)
 - Installed Zybo Z7-10 board file: version 1.1 (Digilent demo uses 1.2; script picks newest installed)
