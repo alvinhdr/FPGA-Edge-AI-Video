@@ -228,7 +228,15 @@ then with separate train/test capture sets.
   final weights (all layers on 20 images + 100 images FC/digit/conf): ALL PASS, same cycle counts.
 - Repo scan before going public: no secrets, no large tracked files of our own. The user's Gmail address is in the commit history (37 commits) and in
   HANDOVER/PROGRESS.
-- Final RTL/CDC review: started with an opus helper (read-only); result to be recorded here.
+- **Final RTL/CDC review (opus helper, read-only, 2026-10-08): datapath and main crossings OK** (cdc_bus_sync, cdc_pulse_sync, settings latch, 8x8 average,
+  bank flip, requantization, argmax, AXI-Lite all judged correct; it read about half of the files fully, the rest only grep-checked: no latches/negedge).
+  Findings (I verified #1 and the outdated CDC.md myself; the others are the reviewer's reading of the code, untested): (1) ROI x0 > 1056 or y0 > 496
+  freezes the AI path (hardware has no clamp, the ARM program clamps) - REAL; (2) ROI readback while the CNN is busy returns wrong bytes (documented in
+  ai_core header); (3) CNN_START while busy is dropped; (4) frame pulse and ready-bank bit use separate synchronizers; (5) no pixel-domain reset, result
+  never cleared after HDMI loss; (6) no set_max_delay -datapath_only on crossings; (7) CDC.md outdated; (8) duplicated magic numbers.
+  Action taken: no RTL change (every RTL change = rebuild + re-verify + SD copy, and nothing failed on the board); docs/CDC.md updated (crossing #10 result bus +
+  CONF_MIN, #11, "Known limits" section), README "Honest limits" extended. Candidate future fixes: clamp ROI in axil_regs, stall AXI read while busy,
+  one handshake for bank + event, max-delay constraints.
 - Left for the user: decide license (README says "not chosen yet"), whether to make the repo public, email in history (noreply address?), whether to
   keep CLAUDE.md/HANDOVER.md/PROGRESS.md in the public repo; upload of the video is done (YouTube link above, unlisted).
 

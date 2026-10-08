@@ -65,6 +65,7 @@ Going from 8 to 16 MACs gives only 1.36x: the first layer has just 8 output chan
 - The ARM baseline is plain C (no NEON SIMD, one core). A hand-optimized version would be faster than my 2,293 &micro;s.
 - Power (2.04 W) is Vivado's estimate, not a measurement. Most of it is the ARM and DDR, not the CNN.
 - One digit at a time, in a box. The result of frame N is shown on frame N+1.
+- Robustness edges found in my own final review and left as known limits (details in [docs/CDC.md](docs/CDC.md#known-limits-found-in-the-phase-8-review-2026-10-08)): the ROI box must stay on screen (the ARM program enforces this, the hardware does not), the last digit stays on screen if the HDMI cable is pulled, and the clock crossings are covered by asynchronous clock groups but have no max-delay constraints.
 
 ## Repository
 

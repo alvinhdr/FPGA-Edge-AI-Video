@@ -48,6 +48,8 @@ fails with 127 torn values such as "got 64 after 127".
 | 7 | ROI image, 28x28 bytes | `clk_pix` → `clk_acc` | buffer | dual-clock block RAM with **2 banks**: `roi_capture` writes bank `w` while readers use the other ("ready") bank, which holds the last complete image. Banks flip only after a full frame. `freeze` stops the flipping for slow readers (ARM UART dump) | `rtl/top.sv` (`u_roi_buffer`), `rtl/roi_capture.sv` |
 | 8 | frame-done event | `clk_pix` → `clk_acc` | event | `cdc_pulse_sync` (toggle). One event per 16.7 ms, far slower than the limit | `rtl/top.sv` (`u_frame_sync`) |
 | 9 | ready-bank number | `clk_pix` → `clk_acc` | 1-bit, quasi-static | `cdc_sync_2ff`. It changes once per frame, together with the event in #8 | `rtl/top.sv` (`u_bank_sync`) |
+| 10 | CNN result: valid, digit, confidence (13 bits) | `clk_acc` → `clk_pix` | multi-bit | `cdc_bus_sync` (req/ack handshake, same as #6). The `valid` bit that crosses is `o_overlay_valid = result_valid && conf >= CONF_MIN`: the compare is made from `clk_acc` registers, before the synchronizer, so it adds no crossing | `rtl/top.sv` (`u_result_sync`), `rtl/ai_core.sv` |
+| 11 | ROI buffer port B (CNN read / AXI readback), test-image (inject) RAM | all in `clk_acc` | same domain | Not a crossing: the read side of #7 and the inject RAM are in `clk_acc`. The CNN owns port B while it runs (see the limits below) | `rtl/ai_core.sv` |
 
 LED outputs, `hdmi_rx_hpd` and the switch inputs are slow, human-speed signals: they have a false path in the XDC.
 
@@ -71,6 +73,25 @@ did not change, and clears `freeze`.
   `LockedSync`, `SyncBaseOvf`): its own asynchronous-reset synchronizers, with false paths in
   Digilent's XDC. Not in our RTL; reviewed and accepted (third-party IP, used unchanged, works on the board).
 
-## Planned (later phases)
-- CNN result (digit, confidence) `clk_acc` → `clk_pix`: `cdc_bus_sync` (same handshake as #6).
-- Test-image injection: the ARM writes port B of the ROI buffer (bank selection rules as in #7).
+## Known limits (found in the Phase 8 review, 2026-10-08)
+
+A read-only review of the RTL found no wrong crossing in the datapath, and the handshake and pulse synchronizers were judged
+correct. These limits remain on purpose or by lack of time; the ARM demo program keeps clear of them:
+
+1. **ROI position must stay on screen.** The register accepts any 11-bit x0/y0. If x0 > 1056 or y0 > 496, the last 8x8 block never
+   completes, so the banks stop flipping, no frame-done event is sent, and the result on the TV freezes. `sw/edge_ai_demo` clamps the
+   position; the hardware does not.
+2. **ROI readback while the CNN runs.** The CNN owns buffer port B while it is busy; an AXI readback in that time returns wrong
+   bytes (no error). The ARM capture code turns `cnn_enable` off first. `FREEZE` protects against bank flips, not against this.
+3. **CNN_START while busy is dropped.** The ARM tests and the benchmark wait for the CNN to finish first.
+4. **Frame-done event and ready-bank bit use two separate synchronizers (#8, #9).** The bank bit changes together with the toggle
+   and has one register less in its path, so it is settled when the pulse arrives, but this is not enforced by construction. A safer
+   design sends the bank number inside one handshake.
+5. **No reset in the pixel domain; the result is never cleared.** After the HDMI input is lost, the last digit stays on screen;
+   after a resolution change the pipeline re-syncs at the next start of frame (a long gap with no valid pixels), and the first image
+   after that can be partial.
+6. **No `set_max_delay -datapath_only` on the crossings.** They are covered by `set_clock_groups -asynchronous` only, so their routing
+   delay is unconstrained. They work at these clock rates (timing met, board verified); the usual practice is a max-delay of about one
+   destination clock period.
+
+Each of these is a candidate for a future change; none was seen to fail in simulation or on the board.
