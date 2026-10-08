@@ -115,7 +115,7 @@ Older sections below are history; the newest information is at the bottom of eac
   **INJECT 20/20 bit-exact**; digits drawn in Paint -> TV shows the correct digit + confidence bar live. **Phase 6 DONE.**
 
 ## Phase 4 history
-- **Phase 4 (ROI capture + CDC), 2026-10-07, commit cda5fc1:**
+- **Phase 4 (ROI capture + CDC), 2026-10-07, commit 855c416:**
   - RTL done: roi_capture, ai_view_overlay, ram_tdp, cdc_pulse_sync, cdc_bus_sync, axil_regs (base 0x43C00000,
     map in sw/common/edge_ai_regs.h); top.sv + block design (PS M_AXI_GP0 -> SmartConnect -> M_AXI_LITE, clk_acc 100 MHz).
   - Sims ALL PASS: scripts/sim_pixel_pipeline.py (ROI data bit-exact vs QUANTIZATION.md s8, banks, AI view);
@@ -189,7 +189,7 @@ then with separate train/test capture sets.
 - **Fine-tuning (`ml/finetune.py`, `cv` and `final` modes):** 2-fold CV, 3 seeds, 1,200 steps: **79.3 % -> 94.0 %** on unseen
   drawings, MNIST 98.25 -> 97.95 %. Adding USPS (downloaded 2026-10-08 from csie.ntu.edu.tw LIBSVM, in git-ignored `ml/data/`):
   93.3 %, no gain, not used. Final model trained on all 140 (MNIST int 97.96 %), promoted to `ml/model_float.npz` /
-  `ml/quant_params.npz` (old ones are in git history, commit 6dc8ce1). New constants M1=20888 M2=21182 Mc=25098 (S unchanged).
+  `ml/quant_params.npz` (old ones are in git history, commit d6005c6). New constants M1=20888 M2=21182 Mc=25098 (S unchanged).
   Re-done after the change: check_golden bit-exact (2000), `sim_cnn.py --p 8 --n 1000` 0 mismatches (982/1000 correct),
   sim_unit ALL PASS (incl. tb_ai_core), full build **WNS +0.737 ns, WHS +0.064**, 2,621 LUT, 2,985 FF, 5 BRAM, 10 DSP,
   2.040 W; ARM apps rebuilt; board 100-image check bit-exact; 10,000-image rerun in progress/see RESULTS.md.
@@ -240,7 +240,7 @@ then with separate train/test capture sets.
 - Left for the user: decide license (README says "not chosen yet"), whether to make the repo public, email in history (noreply address?), whether to
   keep CLAUDE.md/HANDOVER.md/PROGRESS.md in the public repo; upload of the video is done (YouTube link above, unlisted).
 
-- **Phase 8 decisions (user, 2026-10-08): license MIT (done), notes files stay, no Claude as contributor.** Commits from 6c7317e on have no
+- **Phase 8 decisions (user, 2026-10-08): license MIT (done), notes files stay, no Claude as contributor.** Commits from d1a2b86 on have no
   trailer; the 39 older ones have `Co-Authored-By: Claude`. The user chose to rewrite the history (option A), but the tool permission blocked git history
   rewrites in the session, so `scripts/remove_claude_trailer.py` was written for the USER to run (backup branch `backup-before-rewrite`, rewrites only main + tags,
   verifies, fixes old commit ids in the .md notes, does NOT push; tested on a throwaway clone: 0 Claude lines in main, backup keeps 39, tags moved).
