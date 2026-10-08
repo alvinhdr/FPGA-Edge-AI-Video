@@ -3,7 +3,7 @@
 # Project: Real-Time Edge AI Video Processor on FPGA
 # Purpose: Make the architecture diagram in the standard diagrams.net (draw.io) look:
 #            docs/images/architecture.drawio   editable file (open it at app.diagrams.net)
-#            docs/images/architecture.png      picture for the README, drawn from the SAME shapes
+#            docs/images/architecture-bw.png   picture for the README, drawn from the SAME shapes
 #          Both come from one list of boxes and arrows below, so they always match.
 #
 # Usage  : .venv\Scripts\python.exe scripts/make_diagram.py
@@ -15,7 +15,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-OUT_PNG = os.path.join(ROOT, "docs", "images", "architecture.png")
+OUT_PNG = os.path.join(ROOT, "docs", "images", "architecture-bw.png")
 OUT_XML = os.path.join(ROOT, "docs", "images", "architecture.drawio")
 FONT = r"C:\Windows\Fonts\arial.ttf"
 FONT_B = r"C:\Windows\Fonts\arialbd.ttf"

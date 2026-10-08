@@ -20,7 +20,7 @@
 
 ## How it works
 
-![Architecture](docs/images/architecture.png)
+![Architecture](docs/images/architecture-bw.png)
 
 1. **HDMI in.** Digilent's `dvi2rgb` turns the laptop's HDMI signal into pixels. My own EDID makes the laptop send only 1280x720 @ 60 Hz.
 2. **Pixel pipeline (my RTL, 74.25 MHz).** Pixels stream straight through: no frame buffer, only a few clocks of delay. Overlays draw the green box, the digit and the confidence bar.
