@@ -223,7 +223,7 @@ then with separate train/test capture sets.
 
 ## Phase 8 - polish (IN PROGRESS, 2026-10-08)
 - Done: `README.md` (pitch, GIF, YouTube link https://youtu.be/mclvHZH5C0E, results table, how it works, verification, limits, build/run, next steps),
-  `docs/images/architecture.svg` (block diagram, rendered and checked), `docs/PORTFOLIO.md` (CV bullets, LinkedIn post, YouTube description,
+  `docs/images/architecture.png` (block diagram, rendered and checked), `docs/PORTFOLIO.md` (CV bullets, LinkedIn post, YouTube description,
   interview pitch). All numbers come from `docs/RESULTS.md`. Re-verified before writing the README: sim_cnn for P = 1, 2, 4, 8, 16 with the
   final weights (all layers on 20 images + 100 images FC/digit/conf): ALL PASS, same cycle counts.
 - Repo scan before going public: no secrets, no large tracked files of our own. The user's Gmail address is in the commit history (37 commits) and in
