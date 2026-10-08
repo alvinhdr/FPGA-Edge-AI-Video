@@ -204,3 +204,8 @@ then with separate train/test capture sets.
 Phase 8: README (pitch, demo GIF/video, block diagram, results table, how to build, limits), photos of the live demo
 (TV showing box + AI view + digit + bar), demo video plan, 3-4 CV bullets, LinkedIn draft. Use the subagents in
 `.claude/agents/` if useful (docs-writer drafts, rtl-reviewer before making the repo public). Repo is still private.
+- Phase 8 assets so far: `docs/images/phase7_live_demo_6.jpg` (cropped so nobody is in the picture) and `phase7_live_demo_4.jpg`
+  (TV photos, fine-tuned model, 2026-10-08). The user also has a demo VIDEO filmed the night before with a TV (not in the repo yet).
+  Plan: do NOT commit the raw video to git (size, history); host it (YouTube unlisted / LinkedIn / GitHub Release) and link it
+  in the README; make a small GIF (< 10 MB) from a trimmed clip for the README. Check the video for private info (taskbar,
+  people, voices) before publishing. Note: the 4 in the photo is correct but with a very low confidence bar.

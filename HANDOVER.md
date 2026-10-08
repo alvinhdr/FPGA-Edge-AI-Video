@@ -108,6 +108,7 @@ All in `docs/RESULTS.md` with methods. Key numbers (deployed fine-tuned model, P
 - P sweep (OOC, 100 MHz met): P1 1,767 us / 726 LUT / 3 DSP ... P8 240 us / 888 LUT / 10 DSP ... P16 176 us / 1,056 LUT / 18 DSP.
 
 ## 11. Next steps
+0. Assets: photos in `docs/images/phase7_live_demo_{4,6}.jpg`. The user has a demo video (filmed on a TV) that is not in the repo: host it outside git and link it; GIF for the README.
 1. Phase 8 plan with the user: README structure, which photos/video to take (TV with green box, AI view, digit, confidence bar; Paint on the laptop;
    a drawn 4 and 6), 3-4 CV bullets from `docs/RESULTS.md` numbers, LinkedIn draft.
 2. Before making the repo public: rtl-reviewer pass on `rtl/`, check no secrets, bitstream into a GitHub Release (not in git), `.gitignore` check.
