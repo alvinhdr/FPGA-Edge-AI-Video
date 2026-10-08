@@ -49,7 +49,7 @@ def main():
     print(f"backup branch '{BACKUP}' created (undo: git reset --hard {BACKUP})")
 
     env = dict(os.environ, FILTER_BRANCH_SQUELCH_WARNING="1")
-    git("filter-branch", "-f", "--msg-filter", MSG_FILTER, "--tag-name-filter", "cat", "--", "--all", env=env)
+    git("filter-branch", "-f", "--msg-filter", MSG_FILTER, "--tag-name-filter", "cat", "--", "main", "--tags", env=env)   # NOT --all: the backup branch must stay as it is
 
     # the backup branch still has them on purpose; check only the rewritten history
     left = [h for h in git("log", "-i", "--grep=co-authored-by: claude", "--format=%h", "main", "--tags").splitlines()]
@@ -60,7 +60,10 @@ def main():
         sys.exit("ERROR: commit subjects changed unexpectedly; check with 'git log main' and the backup branch.")
     if git("diff", "--stat", BACKUP, "main"):
         sys.exit("ERROR: file contents differ from the backup. Do not push. git reset --hard " + BACKUP)
-    print("OK: no trailer left, same subjects, identical file contents")
+    kept = len(git("log", "-i", "--grep=co-authored-by: claude", "--format=%h", BACKUP).splitlines())
+    if kept != n_trailer:
+        sys.exit(f"ERROR: the backup branch lost its original messages ({kept} of {n_trailer} left). Do not push.")
+    print(f"OK: no trailer left in main, same subjects, identical file contents; backup branch still has the {kept} original messages")
 
     # old commit ids written in the notes -> new ids (matched by subject, same order)
     mapping = {o[0]: n[0] for o, n in zip(old, new)}
