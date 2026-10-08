@@ -225,6 +225,8 @@ Use this table:
 
 For subagents you start yourself (for example, searching documentation or reading big log files), you may set their model directly: use `haiku` or `sonnet` for simple searches and summaries, `opus` for code review of RTL.
 
+Project subagents live in `.claude/agents/` (each has its own model): `log-reader` (haiku: facts from long logs/reports), `docs-writer` (sonnet: README/LEARNING/CV drafts from RESULTS.md facts), `rtl-reviewer` (opus: RTL/CDC/testbench review before a phase is called done). The main session briefs them fully (they start with no context), checks what they return, and never lets them invent numbers.
+
 Do not switch-recommend too often. One recommendation per phase or per change in work type is enough.
 
 ---
