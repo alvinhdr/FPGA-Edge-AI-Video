@@ -229,3 +229,15 @@ A: It is a cross-validated estimate, so the test drawings were not used for trai
 
 **Q: You changed the weights late in the project. How did you keep the hardware correct?**
 A: The golden model is the specification and every step is automatic: export the new weights, run the independent PyTorch cross-check, rerun the RTL simulation on 1,000 test images against the golden model (0 mismatches), rebuild (timing still met), and run all 10,000 MNIST test images on the board again (bit-exact).
+
+## Reject option: "show nothing when unsure" (Phase 7 polish)
+
+- **Reject option / abstain**: a classifier that may answer "I don't know" instead of always guessing. Used when a wrong answer is worse than no answer.
+- **Confidence threshold**: the rule "show the answer only if confidence >= T". T trades coverage (how often we answer) against accuracy of the answers we do give.
+- **Why only the picture is filtered**: the register the ARM reads (`RESULT`) still has every result, so tests and benchmarks see the raw truth; only the video overlay uses the filter (`CONF_MIN`, register 0x28, default 0 = off in hardware, 35 set by the demo program).
+
+**Q: Why does an empty box show a digit with a short bar?**
+A: A network always outputs ten numbers, even for an empty image. I measured an empty image: it gives confidence 30 out of 255, faint noise up to 33. Real drawings are almost always higher. So I added a minimum-confidence register: below it the TV shows no digit and no bar. I tested the boundary in simulation (confidence equal to the limit is shown, one below is hidden) and checked that the test fails when I break the comparison on purpose.
+
+**Q: What is the downside?**
+A: A real but very unsure digit is hidden too (for example an unusual 4 with confidence 13). That is the coverage/accuracy trade-off; the limit can be changed from the terminal while the system runs.

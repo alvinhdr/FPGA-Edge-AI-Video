@@ -368,7 +368,8 @@ module top #(
         .o_thresh       (acc_thresh),
         .o_roi_x0       (acc_roi_x0),
         .o_roi_y0       (acc_roi_y0),
-        .o_result_valid (acc_res_valid),
+        .o_result_valid (),
+        .o_overlay_valid(acc_res_valid),   // result filtered by CONF_MIN, for the video overlay
         .o_digit        (acc_digit),
         .o_conf         (acc_conf)
     );

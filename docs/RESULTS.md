@@ -84,7 +84,7 @@ Whole design (video pipeline + ROI capture + CNN + AXI + PS), placed and routed,
 | P | Slice LUTs | FFs | BRAM tiles | DSP48 | WNS (all clocks) | WHS | Power (estimate) | of which ai_core |
 |---|---|---|---|---|---|---|---|---|
 | 1  | 2,547 (14.5 %) | 2,764 | 5 | 3  | +0.866 ns | +0.054 ns | 2.028 W | 0.016 W |
-| **8** (deployed model) | **2,621 (14.9 %)** | **2,985** | **5** | **10** | **+0.737 ns** | **+0.064 ns** | **2.040 W** | **0.025 W** |
+| **8** (deployed model + CONF_MIN filter) | **2,626 (14.9 %)** | **2,993** | **5** | **10** | **+0.645 ns** | **+0.033 ns** | **2.041 W** | **0.025 W** |
 | 16 | 2,873 (16.3 %) | 3,235 | 5 | 18 | +0.515 ns | +0.016 ns | 2.054 W | 0.040 W |
 
 All three meet timing with 0 critical warnings in synthesis/implementation. Only the P = 8
@@ -192,6 +192,10 @@ model (the one the hardware matches bit-exactly).
 - The deployed model is trained on **all 140** drawings (final MNIST test accuracy 97.96 %,
   integer model). Its accuracy on new drawings is therefore estimated by the cross-validation
   above (about 94 %), not measured on a separate fresh set.
+- The live TV overlay hides results with a confidence below `CONF_MIN` (default 35 of 255; adjustable from the
+  terminal). It is only a display filter: all accuracy numbers in this document are measured on the raw hardware
+  result and are not affected. Measured with the golden model: an empty box gives confidence 30, faint noise
+  up to 33.
 - Optimistic bias: the folds come from the same person in the same session (neighbouring
   drawings of the same digit can look alike), so the true accuracy on a new writer is likely lower.
 
@@ -199,12 +203,12 @@ model (the one the hardware matches bit-exactly).
 
 | Resource | Used | Available | % |
 |---|---|---|---|
-| Slice LUTs | 2,621 | 17,600 | 14.9 % |
-| Flip-flops | 2,985 | 35,200 | 8.5 % |
+| Slice LUTs | 2,626 | 17,600 | 14.9 % |
+| Flip-flops | 2,993 | 35,200 | 8.5 % |
 | Block RAM tiles (36 Kb) | 5 | 60 | 8.3 % |
 | DSP48E1 | 10 | 80 | 12.5 % |
 
-- Timing: **WNS +0.737 ns, WHS +0.064 ns**, 0 failing endpoints, all clocks (74.25 MHz pixel,
+- Timing: **WNS +0.645 ns, WHS +0.033 ns**, 0 failing endpoints, all clocks (74.25 MHz pixel,
   100 MHz accelerator, 125/200 MHz reference, HDMI serial clocks).
 - Power: **2.04 W total on-chip (Vivado estimate**, default activity, confidence "Low", not
   measured). Breakdown: Zynq PS7 (ARM, DDR) 1.40 W, MMCM + PLL (HDMI and reference clocks)

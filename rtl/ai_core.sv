@@ -63,12 +63,14 @@ module ai_core #(
 
     // Result for the pixel domain (crossed by cdc_bus_sync in top)
     output logic        o_result_valid,
+    output wire         o_overlay_valid,     // o_result_valid && conf >= CONF_MIN (drives the video overlay)
     output logic [3:0]  o_digit,
     output logic [7:0]  o_conf
 );
 
     // ---- AXI-Lite registers --------------------------------------------------------
     logic               cnn_enable, inject_mode, cnn_start_req;
+    logic [7:0]         conf_min;
     logic               inj_we;
     logic [9:0]         inj_waddr;
     logic [7:0]         inj_wdata;
@@ -86,13 +88,17 @@ module ai_core #(
         .s_axi_arready(s_axi_arready), .s_axi_rdata(s_axi_rdata), .s_axi_rresp(s_axi_rresp),
         .s_axi_rvalid(s_axi_rvalid), .s_axi_rready(s_axi_rready),
         .o_invert(o_invert), .o_thresh_en(o_thresh_en), .o_freeze(o_freeze),
-        .o_cnn_enable(cnn_enable), .o_inject_mode(inject_mode), .o_thresh(o_thresh),
+        .o_cnn_enable(cnn_enable), .o_inject_mode(inject_mode), .o_thresh(o_thresh), .o_conf_min(conf_min),
         .o_roi_x0(o_roi_x0), .o_roi_y0(o_roi_y0), .o_cnn_start(cnn_start_req),
         .i_frame_pulse(i_frame_pulse), .i_ready_bank(i_ready_bank), .i_cnn_busy(busy_q),
         .i_result_valid(o_result_valid), .i_digit(o_digit), .i_conf(o_conf),
         .i_cnn_cycles(cycles), .i_cnn_count(count_q), .i_fc_acc(fc_acc),
         .o_roi_addr(axi_roi_addr), .i_roi_data(i_roi_data),
         .o_inj_we(inj_we), .o_inj_addr(inj_waddr), .o_inj_data(inj_wdata));
+
+    // The video overlay hides a result whose confidence is below CONF_MIN (default 0: show all).
+    // Only the picture on the TV is filtered; the RESULT register for the ARM is unchanged.
+    assign o_overlay_valid = o_result_valid && (o_conf >= conf_min);
 
     // ---- start logic -----------------------------------------------------------------
     logic       start, cnn_done, src_inject_q, bank_q;

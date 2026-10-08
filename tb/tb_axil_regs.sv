@@ -34,7 +34,7 @@ module tb_axil_regs;
     logic [7:0]  inj_data;
     logic signed [31:0] fc_acc [10];
     initial foreach (fc_acc[k]) fc_acc[k] = 32'(k * 1000 - 3000);
-    logic [7:0]  thresh, roi_data;
+    logic [7:0]  thresh, roi_data, conf_min;
     logic [10:0] roi_x0, roi_y0, roi_addr;
 
     // ROI RAM: port A written by the TB (like roi_capture), port B read by the DUT
@@ -54,7 +54,7 @@ module tb_axil_regs;
         .s_axi_araddr(araddr), .s_axi_arvalid(arvalid), .s_axi_arready(arready),
         .s_axi_rdata(rdata), .s_axi_rresp(rresp), .s_axi_rvalid(rvalid), .s_axi_rready(rready),
         .o_invert(invert), .o_thresh_en(thresh_en), .o_freeze(freeze), .o_cnn_enable(cnn_enable),
-        .o_inject_mode(inject_mode), .o_thresh(thresh), .o_roi_x0(roi_x0), .o_roi_y0(roi_y0),
+        .o_inject_mode(inject_mode), .o_thresh(thresh), .o_conf_min(conf_min), .o_roi_x0(roi_x0), .o_roi_y0(roi_y0),
         .o_cnn_start(cnn_start), .i_frame_pulse(frame_pulse), .i_ready_bank(ready_bank),
         .i_cnn_busy(1'b0), .i_result_valid(1'b1), .i_digit(4'd7), .i_conf(8'd200),
         .i_cnn_cycles(32'd23965), .i_cnn_count(32'd5), .i_fc_acc(fc_acc),
@@ -122,6 +122,8 @@ module tb_axil_regs;
         expect_read(16'h0000, 32'hED6E_0006, "ID");
         expect_read(16'h0004, 32'h0000_0009, "CTRL reset (invert on, cnn_enable on)");
         expect_read(16'h0008, 32'd64,        "THRESH reset");
+        expect_read(16'h0028, 32'd0,         "CONF_MIN reset (overlay filter off)");
+        if (conf_min !== 8'd0) begin $display("ERROR: conf_min port after reset"); errors++; end
         expect_read(16'h000C, {5'd0, 11'd248, 5'd0, 11'd528}, "ROI_POS reset");
         expect_read(16'h0014, 32'd0,         "FRAME_CNT reset");
         if (!(invert && !thresh_en && !freeze && cnn_enable && !inject_mode && thresh == 64 && roi_x0 == 528 && roi_y0 == 248)) begin
@@ -134,6 +136,10 @@ module tb_axil_regs;
         if (invert || !thresh_en || !freeze || !cnn_enable || !inject_mode) begin $display("ERROR: CTRL outputs"); errors++; end
         axi_write(16'h0008, 32'h1234_5678);
         expect_read(16'h0008, 32'h0000_0078, "THRESH write (masked to 8 bits)");
+        axi_write(16'h0028, 32'h1234_56AB);
+        expect_read(16'h0028, 32'h0000_00AB, "CONF_MIN write (masked to 8 bits)");
+        if (conf_min !== 8'hAB) begin $display("ERROR: conf_min port"); errors++; end
+        expect_read(16'h0008, 32'h0000_0078, "THRESH unchanged by a CONF_MIN write");
         axi_write(16'h000C, {5'h1F, 11'd400, 5'h1F, 11'd900});
         expect_read(16'h000C, {5'd0, 11'd400, 5'd0, 11'd900}, "ROI_POS write (masked)");
         if (roi_x0 != 900 || roi_y0 != 400) begin $display("ERROR: ROI outputs"); errors++; end

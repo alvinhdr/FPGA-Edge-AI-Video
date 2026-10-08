@@ -15,6 +15,7 @@
  *   f : frame-rate test (60 s): frames, inferences, skipped frames, fps
  *   w/a/z/d : move the ROI box up/left/down/right by 8 pixels   x : ROI back to the center
  *   i : toggle invert   t : toggle threshold   + / - : threshold +/- 8
+ *   . / , : minimum confidence for the TV overlay +/- 8 (below it: no digit, no bar; default 35)
  *   h : help
  * Live output: a "PRED" line every time the predicted digit changes.
  * ========================================================================== */
@@ -29,6 +30,10 @@
 #define ROI_X_CENTER 528
 #define ROI_Y_CENTER 248
 #define ROI_STEP     8
+
+/* An empty box gives confidence ~30 (measured, golden model: blank image 30, faint noise up to 33), real
+ * drawings almost always more. Below this value the TV shows nothing instead of a guess. */
+#define DEFAULT_CONF_MIN 35u
 
 /* Cortex-A9 global timer = CPU clock / 2 (Zynq-7000 TRM); started by the first sleep call. */
 #define TIMER_HZ     ((u32)(XPAR_CPU_CORE_CLOCK_FREQ_HZ / 2))
@@ -58,10 +63,10 @@ static void print_status(void)
 {
     u32 ctrl = eai_rd(EAI_CTRL);
     u32 roi  = eai_rd(EAI_ROI_POS);
-    xil_printf("STATUS id=0x%08x frames=%u inferences=%u cnn_enable=%u inject=%u invert=%u thresh_en=%u thresh=%u roi=(%u,%u)\r\n",
+    xil_printf("STATUS id=0x%08x frames=%u inferences=%u cnn_enable=%u inject=%u invert=%u thresh_en=%u thresh=%u conf_min=%u roi=(%u,%u)\r\n",
                eai_rd(EAI_ID), eai_rd(EAI_FRAME_CNT), eai_rd(EAI_CNN_COUNT),
                (ctrl >> 3) & 1u, (ctrl >> 4) & 1u, ctrl & 1u, (ctrl >> 1) & 1u,
-               eai_rd(EAI_THRESH), roi & 0x7FFu, (roi >> 16) & 0x7FFu);
+               eai_rd(EAI_THRESH), eai_rd(EAI_CONF_MIN), roi & 0x7FFu, (roi >> 16) & 0x7FFu);
 }
 
 static int wait_frames(u32 n)
@@ -177,7 +182,7 @@ static void move_roi(int dx, int dy)
 static void help(void)
 {
     xil_printf("commands: p=prediction s=status j=inject self-test c=capture f=fps test w/a/z/d=move box x=center "
-               "i=invert t=threshold +/-=threshold h=help\r\n");
+               "i=invert t=threshold +/-=threshold ,/.=min confidence h=help\r\n");
 }
 
 int main(void)
@@ -186,16 +191,21 @@ int main(void)
     if (eai_rd(EAI_ID) != EAI_ID_VALUE)
         xil_printf("ERR wrong ID 0x%08x (bitstream not loaded?)\r\n", eai_rd(EAI_ID));
     eai_wr(EAI_CTRL, eai_rd(EAI_CTRL) | EAI_CTRL_CNN_ENABLE);
+    eai_wr(EAI_CONF_MIN, DEFAULT_CONF_MIN);
     print_status();
     help();
 
     u32 last_digit = 0xFF;
     while (1) {
-        /* live: report when the predicted digit changes */
+        /* live: report when the predicted digit changes (only results the TV shows: conf >= CONF_MIN) */
         u32 r = eai_rd(EAI_RESULT);
-        if (EAI_RESULT_VALID(r) && EAI_RESULT_DIGIT(r) != last_digit) {
-            last_digit = EAI_RESULT_DIGIT(r);
-            print_prediction();
+        if (EAI_RESULT_VALID(r) && EAI_RESULT_CONF(r) >= eai_rd(EAI_CONF_MIN)) {
+            if (EAI_RESULT_DIGIT(r) != last_digit) {
+                last_digit = EAI_RESULT_DIGIT(r);
+                print_prediction();
+            }
+        } else {
+            last_digit = 0xFF;                         /* hidden / no result: report the next digit again */
         }
         if (!key_available()) { usleep(20000); continue; }
 
@@ -213,6 +223,8 @@ int main(void)
             case 'x': eai_wr(EAI_ROI_POS, (ROI_Y_CENTER << 16) | ROI_X_CENTER); print_status(); break;
             case 'i': eai_wr(EAI_CTRL, ctrl ^ EAI_CTRL_INVERT);    print_status(); break;
             case 't': eai_wr(EAI_CTRL, ctrl ^ EAI_CTRL_THRESH_EN); print_status(); break;
+            case '.': { u32 m = eai_rd(EAI_CONF_MIN); eai_wr(EAI_CONF_MIN, m <= 247 ? m + 8 : 255); print_status(); break; }
+            case ',': { u32 m = eai_rd(EAI_CONF_MIN); eai_wr(EAI_CONF_MIN, m >= 8 ? m - 8 : 0);     print_status(); break; }
             case '+': eai_wr(EAI_THRESH, thr <= 247 ? thr + 8 : 255); print_status(); break;
             case '-': eai_wr(EAI_THRESH, thr >= 8 ? thr - 8 : 0);     print_status(); break;
             case 'h': help(); break;

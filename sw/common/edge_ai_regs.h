@@ -21,6 +21,7 @@
 #define EAI_RESULT        0x001Cu   /* RO  [3:0] digit [15:8] conf [16] valid [31] busy       */
 #define EAI_CNN_CYCLES    0x0020u   /* RO  clocks of the last inference                       */
 #define EAI_CNN_COUNT     0x0024u   /* RO  finished inferences                                */
+#define EAI_CONF_MIN      0x0028u   /* RW  [7:0] video overlay shows a result only if conf >= this (reset 0 = off) */
 #define EAI_FC_ACC        0x0040u   /* RO  FC accumulator k at EAI_FC_ACC + 4*k, k = 0..9     */
 #define EAI_ROI_DATA      0x1000u   /* RO  ROI pixel i at EAI_ROI_DATA + 4*i, i = 0..783      */
 #define EAI_INJECT_DATA   0x2000u   /* WO  inject RAM pixel i at EAI_INJECT_DATA + 4*i        */

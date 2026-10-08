@@ -42,7 +42,7 @@ module tb_ai_core;
         .clk_a(clk), .we_a(roi_we), .addr_a(roi_waddr), .din_a(roi_wdata), .dout_a(),
         .clk_b(clk), .we_b(1'b0), .addr_b(roi_raddr), .din_b(8'd0), .dout_b(roi_rdata));
 
-    logic        invert, thresh_en, freeze, res_valid;
+    logic        invert, thresh_en, freeze, res_valid, ov_valid;
     logic [7:0]  thresh, conf;
     logic [10:0] roi_x0, roi_y0;
     logic [3:0]  digit;
@@ -58,7 +58,7 @@ module tb_ai_core;
         .i_frame_pulse(frame_pulse), .i_ready_bank(ready_bank),
         .o_invert(invert), .o_thresh_en(thresh_en), .o_freeze(freeze), .o_thresh(thresh),
         .o_roi_x0(roi_x0), .o_roi_y0(roi_y0),
-        .o_result_valid(res_valid), .o_digit(digit), .o_conf(conf));
+        .o_result_valid(res_valid), .o_overlay_valid(ov_valid), .o_digit(digit), .o_conf(conf));
 
     // Golden vectors
     logic [IN_B*8-1:0] v_in  [NFULL];
@@ -126,6 +126,8 @@ module tb_ai_core;
         axi_read(16'h0000, r); expect_eq("ID", r, 32'hED6E_0006);
         axi_read(16'h0004, r); expect_eq("CTRL reset", r, 32'h0000_0009);
         axi_read(16'h001C, r); expect_eq("RESULT before any inference", r, 32'h0);
+        axi_read(16'h0028, r); expect_eq("CONF_MIN reset", r, 32'h0);
+        expect_eq("overlay valid before any inference", ov_valid, 1'b0);
 
         // 2. Inject mode, images 0..9
         axi_write(16'h0004, 32'h0000_0019);                  // invert, cnn_enable, inject_mode
@@ -157,6 +159,32 @@ module tb_ai_core;
         frame_pulse <= 1; @(posedge clk); frame_pulse <= 0;
         repeat (30000) @(posedge clk);
         axi_read(16'h0024, r); expect_eq("CNN_COUNT unchanged with cnn_enable=0", r, 32'd15);
+
+        // 5. CONF_MIN: the overlay hides low-confidence results, the RESULT register does not.
+        //    The last result is image 14: conf c. Default CONF_MIN = 0 shows everything.
+        begin
+            logic [7:0] c;
+            c = v_res[14][7:0];
+            expect_eq("overlay shows the result with CONF_MIN = 0", ov_valid, 1'b1);
+            axi_write(16'h0028, {24'd0, c});                  // conf == CONF_MIN -> still shown
+            repeat (3) @(posedge clk);
+            expect_eq("overlay shows conf == CONF_MIN", ov_valid, 1'b1);
+            if (c != 8'hFF) begin
+                axi_write(16'h0028, {24'd0, 8'(c + 8'd1)});   // conf < CONF_MIN -> hidden
+                repeat (3) @(posedge clk);
+                expect_eq("overlay hides conf < CONF_MIN", ov_valid, 1'b0);
+                expect_eq("raw result valid is NOT filtered", res_valid, 1'b1);
+                axi_read(16'h001C, r);
+                expect_eq("RESULT register is NOT filtered", r, {1'b0, 14'd0, 1'b1, v_res[14][7:0], 4'd0, v_res[14][11:8]});
+            end
+            axi_write(16'h0028, 32'd255);
+            repeat (3) @(posedge clk);
+            expect_eq("overlay with CONF_MIN = 255", ov_valid, (c == 8'hFF) ? 1'b1 : 1'b0);
+            axi_write(16'h0028, 32'd0);
+            repeat (3) @(posedge clk);
+            expect_eq("overlay shows the result again with CONF_MIN = 0", ov_valid, 1'b1);
+            $display("checked: CONF_MIN overlay filter (boundary conf == CONF_MIN, conf + 1, 255, back to 0)");
+        end
 
         $display("checked: 10 inject-mode + 5 auto-mode inferences over AXI");
         if (errors == 0) $display("TEST PASSED");

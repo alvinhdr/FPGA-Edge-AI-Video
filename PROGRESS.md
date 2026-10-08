@@ -200,6 +200,18 @@ then with separate train/test capture sets.
   a drawn 6 -> 6 (confidence 158/255, captured: hardware == golden). One earlier 6 was read as 9 (not captured).
   Boot jumper SD, both HDMI cables. **Phase 7 DONE.**
 
+- **Polish after Phase 7 (2026-10-08): CONF_MIN overlay filter (user chose option 1).** An empty box showed a digit with a short
+  bar (blank image -> conf 30, faint noise <= 33, measured with the golden model; live PRED lines 0-50). New register
+  `CONF_MIN` 0x0028 (`rtl/axil_regs.sv`), `ai_core.o_overlay_valid = valid && conf >= conf_min`, `top.sv` feeds the overlay
+  from it. Default in hardware 0 (off); `sw/edge_ai_demo` sets 35 and has keys `.` / `,` (+/- 8). RESULT register unfiltered.
+  Tests: tb_axil_regs (reset, mask, no side effects), tb_ai_core (boundary conf==min shown, min+1 hidden, 255, back to 0,
+  RESULT unfiltered); mutation (`>=` -> `>`) is caught; all unit sims + pixel sims pass.
+  Full rebuild: **WNS +0.645 ns, WHS +0.033**, 2,626 LUT, 2,993 FF, 5 BRAM, 10 DSP, 2.041 W. Loaded over JTAG (works with the SD jumper):
+  **user-confirmed on the board:** `conf_min=35` at start, `.`/`,` change it by 8 (35 -> 83 -> 35), PuTTY PRED lines only >= 35,
+  empty box shows nothing, normal digits still shown. New `build/BOOT.bin` (SHA-256 5c058558...) made; SD card copy pending.
+  Demo videos: `20261007_212131.mp4` (old model, portrait, 150 MB) and `20261008_092245.mp4` (final model, no filter yet, 28 s, 60 MB)
+  in the user's Downloads; user will use the second for now. Not in git (size); host + link, GIF later.
+
 ## Next step
 Phase 8: README (pitch, demo GIF/video, block diagram, results table, how to build, limits), photos of the live demo
 (TV showing box + AI view + digit + bar), demo video plan, 3-4 CV bullets, LinkedIn draft. Use the subagents in

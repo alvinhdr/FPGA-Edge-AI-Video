@@ -18,6 +18,9 @@
 //   0x001C RESULT     RO  [3:0] digit  [15:8] confidence  [16] valid (a result exists)  [31] CNN busy
 //   0x0020 CNN_CYCLES RO  clocks of the last inference (hardware cycle counter)
 //   0x0024 CNN_COUNT  RO  number of finished inferences since reset
+//   0x0028 CONF_MIN   RW  [7:0] minimum confidence (reset 0 = off): the result is hidden on the
+//                         VIDEO overlay while its confidence is below this value (empty box = no
+//                         digit). The RESULT register above is NOT affected.
 //   0x0040 + 4*k      RO  FC accumulator k (k = 0..9, signed), for debugging
 //   0x1000 + 4*i      RO  ROI pixel i (i = 0..783) of the READY bank, in [7:0]
 //   0x2000 + 4*i      WO  inject RAM pixel i (i = 0..783), [7:0]
@@ -59,6 +62,7 @@ module axil_regs #(
     output logic        o_cnn_enable,
     output logic        o_inject_mode,
     output logic [7:0]  o_thresh,
+    output logic [7:0]  o_conf_min,         // overlay shows a result only if conf >= this
     output logic [10:0] o_roi_x0,
     output logic [10:0] o_roi_y0,
     output logic        o_cnn_start,        // 1-clock pulse
@@ -87,11 +91,11 @@ module axil_regs #(
     localparam logic [15:0] A_ID = 16'h0000, A_CTRL = 16'h0004, A_THRESH = 16'h0008,
                             A_ROI = 16'h000C, A_STATUS = 16'h0010, A_FCNT = 16'h0014,
                             A_START = 16'h0018, A_RESULT = 16'h001C, A_CYC = 16'h0020,
-                            A_CNT = 16'h0024;
+                            A_CNT = 16'h0024, A_CMIN = 16'h0028;
     localparam int          ROI_PIXELS = 784;
 
     // ---- registers ------------------------------------------------------------
-    logic [31:0] ctrl_q, thresh_q, roi_q, fcnt_q;
+    logic [31:0] ctrl_q, thresh_q, roi_q, fcnt_q, cmin_q;
 
     assign o_invert      = ctrl_q[0];
     assign o_thresh_en   = ctrl_q[1];
@@ -99,6 +103,7 @@ module axil_regs #(
     assign o_cnn_enable  = ctrl_q[3];
     assign o_inject_mode = ctrl_q[4];
     assign o_thresh      = thresh_q[7:0];
+    assign o_conf_min    = cmin_q[7:0];
     assign o_roi_x0      = roi_q[10:0];
     assign o_roi_y0      = roi_q[26:16];
 
@@ -121,6 +126,7 @@ module axil_regs #(
         if (!rst_n) begin
             ctrl_q       <= 32'h0000_0009;                 // invert on, cnn_enable on
             thresh_q     <= 32'd64;
+            cmin_q       <= 32'd0;                         // overlay filter off
             roi_q        <= {5'd0, 11'd248, 5'd0, 11'd528};
             s_axi_bvalid <= 1'b0;
         end else begin
@@ -134,6 +140,7 @@ module axil_regs #(
                         A_CTRL:   ctrl_q   <= apply_strb(ctrl_q,   s_axi_wdata, s_axi_wstrb) & 32'h1F;
                         A_THRESH: thresh_q <= apply_strb(thresh_q, s_axi_wdata, s_axi_wstrb) & 32'hFF;
                         A_ROI:    roi_q    <= apply_strb(roi_q,    s_axi_wdata, s_axi_wstrb) & 32'h07FF_07FF;
+                        A_CMIN:   cmin_q   <= apply_strb(cmin_q,   s_axi_wdata, s_axi_wstrb) & 32'hFF;
                         A_START:  o_cnn_start <= s_axi_wstrb[0] && s_axi_wdata[0];
                         default: ;                             // read-only or unused: ignored
                     endcase
@@ -191,6 +198,7 @@ module axil_regs #(
                         A_RESULT: s_axi_rdata <= {i_cnn_busy, 14'd0, i_result_valid, i_conf, 4'd0, i_digit};
                         A_CYC:    s_axi_rdata <= i_cnn_cycles;
                         A_CNT:    s_axi_rdata <= i_cnn_count;
+                        A_CMIN:   s_axi_rdata <= cmin_q;
                         default:  s_axi_rdata <= 32'hDEAD_BEEF;
                     endcase
                 end
