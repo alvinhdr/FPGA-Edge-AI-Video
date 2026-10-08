@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current phase
-Phases 0-7 **DONE** (tags phase-0..7-done). **Phase 8 (polish) IN PROGRESS** (README, diagram, portfolio texts written; review + repo-public decisions left).
+Phases 0-8 **DONE** (tags phase-0..8-done). **Project finished.** Repo is PUBLIC at https://github.com/alvinhdr/FPGA-Edge-AI-Video (MIT).
 Older sections below are history; the newest information is at the bottom of each phase section.
 
 ## Environment (checked 2026-10-07)
@@ -20,7 +20,7 @@ Older sections below are history; the newest information is at the bottom of eac
 
 ## Decisions made
 - Simulator: **Vivado xsim** with SystemVerilog testbenches.
-- Repo **private** until Phase 8. GitHub: https://github.com/alvinhdr/fpga-edge-ai-video
+- Repo **private** until Phase 8. GitHub: https://github.com/alvinhdr/FPGA-Edge-AI-Video
 - Python packages installed only when needed.
 - Digilent `vivado-library` is a git submodule at `third_party/vivado-library`, pinned to commit
   `f4613ff` (the same commit used by Digilent's `10/HDMI/2025.1-1` demo). New folder `third_party/`.
@@ -221,7 +221,7 @@ then with separate train/test capture sets.
   TV) was made from it for the README. `build/demo_trimmed_for_upload.mp4` (33 s, no audio, 67 MB, git-ignored) is for YouTube (unlisted) / LinkedIn.
   The raw video stays out of git.
 
-## Phase 8 - polish (IN PROGRESS, 2026-10-08)
+## Phase 8 - polish (DONE 2026-10-08)
 - Done: `README.md` (pitch, GIF, YouTube link https://youtu.be/mclvHZH5C0E, results table, how it works, verification, limits, build/run, next steps),
   `docs/images/architecture.png` (block diagram, rendered and checked), `docs/PORTFOLIO.md` (CV bullets, LinkedIn post, YouTube description,
   interview pitch). All numbers come from `docs/RESULTS.md`. Re-verified before writing the README: sim_cnn for P = 1, 2, 4, 8, 16 with the
@@ -247,6 +247,11 @@ then with separate train/test capture sets.
   After it: the user (or Claude with permission) runs `git push --force-with-lease origin main` and `git push --force origin --tags`.
 - Architecture diagram redone twice at the user's request: black and white, then simple rounded boxes with three numbered steps.
 
+- **Phase 8 finished (2026-10-08):** history cleaned by the user with `scripts/remove_claude_trailer.py` and force-pushed (GitHub contributors: only alvinhdr;
+  8 tags moved; hashes in the notes remapped). Repo renamed to **FPGA-Edge-AI-Video** and made **public** by the user. Architecture diagram is now in
+  diagrams.net style: `docs/images/architecture.drawio` (editable) + `architecture.png`, both made by `scripts/make_diagram.py`.
+  Local-only branch `backup-before-rewrite` (never pushed) still has the original messages; delete with `git branch -D backup-before-rewrite` when wanted.
+
 ## Next step
-1. Read the review result, fix real findings (re-simulate if RTL changes). 2. Ask the user: license, public/private, email, notes files.
-3. After the repo is public: put the BOOT.bin/bitstream in a GitHub Release (not in git). 4. Tag `phase-8-done`.
+Nothing is required. Optional: GitHub About (description, topics), a GitHub Release with BOOT.bin, post the LinkedIn text from docs/PORTFOLIO.md,
+fix the known limits listed in docs/CDC.md (ROI clamp in hardware first), a second person's drawings as a clean test set.

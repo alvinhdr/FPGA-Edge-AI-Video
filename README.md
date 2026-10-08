@@ -84,7 +84,7 @@ Going from 8 to 16 MACs gives only 1.36x: the first layer has just 8 output chan
 Needs a Digilent Zybo Z7-10, Vivado and Vitis 2025.1 (Windows, PowerShell), Python 3.13, and a laptop that can output 1280x720 over HDMI. Everything is built from scripts; no hand-clicked project is stored.
 
 ```powershell
-git clone --recurse-submodules https://github.com/alvinhdr/fpga-edge-ai-video.git
+git clone --recurse-submodules https://github.com/alvinhdr/FPGA-Edge-AI-Video.git
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 .\.venv\Scripts\python.exe -m pip install -r ml/requirements.txt

@@ -7,7 +7,7 @@ Be ready to explain each sentence: [LEARNING.md](LEARNING.md) has the glossary a
 
 ## CV: project entry
 
-**Real-Time Edge AI Video Processor on FPGA** | SystemVerilog, Vivado/Vitis, Zynq-7000 (Zybo Z7-10), C, Python/PyTorch | github.com/alvinhdr/fpga-edge-ai-video
+**Real-Time Edge AI Video Processor on FPGA** | SystemVerilog, Vivado/Vitis, Zynq-7000 (Zybo Z7-10), C, Python/PyTorch | github.com/alvinhdr/FPGA-Edge-AI-Video
 
 Pick 3 or 4 of these:
 
@@ -34,7 +34,7 @@ What I measured on the real board:
 What I learned the hard way: my first model was 98 % on MNIST but only 79 % on digits I drew myself. The hardware was fine; the data was different. After fine-tuning on 140 captures from the live video it reached about 94 % on drawings it had not seen. I also wrote down the limits (one person's drawings, a plain-C ARM baseline), because they matter.
 
 Video: https://youtu.be/mclvHZH5C0E
-Code and all results: https://github.com/alvinhdr/fpga-edge-ai-video
+Code and all results: https://github.com/alvinhdr/FPGA-Edge-AI-Video
 
 #FPGA #EdgeAI #SystemVerilog #Zynq #DigitalDesign #EmbeddedSystems
 
@@ -48,7 +48,7 @@ Real-Time Edge AI Video Processor on FPGA.
 Laptop (HDMI 720p60) -> Digilent Zybo Z7-10 -> TV. A CNN written in SystemVerilog recognizes the handwritten digit in the green box and draws the result on the live video: no frame buffer, 60 FPS, 0 skipped frames.
 On screen, left to right: what the AI sees (28x28), the box, the prediction and a confidence bar. An empty box shows nothing (minimum-confidence filter).
 Measured: 240 microseconds per image, 9.6x faster than the on-chip ARM CPU, 97.96 % on MNIST (bit-exact vs. a Python golden model), about 94 % on my own drawings.
-Code, results and how everything was measured: https://github.com/alvinhdr/fpga-edge-ai-video
+Code, results and how everything was measured: https://github.com/alvinhdr/FPGA-Edge-AI-Video
 
 ---
 

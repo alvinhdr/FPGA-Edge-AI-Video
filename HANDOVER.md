@@ -1,6 +1,6 @@
 # HANDOVER — Real-Time Edge AI Video Processor on FPGA
 
-Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~09:30: Phase 7 DONE.** Work may continue after this;
+Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08: ALL PHASES DONE, repo public.** Work may continue after this;
 **always check `PROGRESS.md` and `git log` for anything newer than this file.**
 
 ---
@@ -32,7 +32,7 @@ Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~09:30: Pha
 | 5 CNN accelerator RTL | DONE (`phase-5-done`) | P=8: 1000/1000 bit-exact; 23,965 cycles = 240 us @100 MHz; all P=1..16 bit-exact |
 | 6 Integration | DONE (`phase-6-done`, 2026-10-08) | full build WNS +0.302 ns; board (SD boot): `j` -> INJECT 20/20 bit-exact; drawn digits predicted live on TV with confidence bar (user-confirmed) |
 | 7 Benchmarks | DONE (`phase-7-done`, 2026-10-08) | board: 10,000 MNIST images 97.96 %, 10,000/10,000 bit-exact, 9.6x vs ARM; 60.00 FPS 0 skipped; real drawings 79.3 % -> 94.0 % (2-fold CV) after fine-tuning; P sweep; SD boot with new model confirmed by user |
-| 8 Polish | **IN PROGRESS** | README + architecture.png + docs/PORTFOLIO.md written; YouTube link in README; RTL review and public-repo decisions left |
+| 8 Polish | DONE (`phase-8-done`, 2026-10-08) | README with GIF + YouTube link + results, diagram (.drawio + PNG), docs/PORTFOLIO.md, MIT license, RTL review recorded in docs/CDC.md, history cleaned, repo public |
 
 ## 4. What works right now (on the board)
 `build/BOOT.bin` (FSBL + bitstream + `edge_ai_demo`) on the microSD, boot jumper on SD. Laptop (1280x720, now forced by
@@ -108,16 +108,17 @@ All in `docs/RESULTS.md` with methods. Key numbers (deployed fine-tuned model, P
 - P sweep (OOC, 100 MHz met): P1 1,767 us / 726 LUT / 3 DSP ... P8 240 us / 888 LUT / 10 DSP ... P16 176 us / 1,056 LUT / 18 DSP.
 
 ## 11. Next steps
-0. Assets: photos `docs/images/phase7_live_demo_{4,6}.jpg`, GIF `docs/images/demo.gif` (4.4 MB, final model + filter). Final video: the user's `Downloads/20261008_094153.mp4`; a trimmed silent copy `build/demo_trimmed_for_upload.mp4` is ready for YouTube (unlisted): the user uploads it and gives the link for the README. The raw video never goes into git.
-1. Phase 8 plan with the user: README structure, which photos/video to take (TV with green box, AI view, digit, confidence bar; Paint on the laptop;
-   a drawn 4 and 6), 3-4 CV bullets from `docs/RESULTS.md` numbers, LinkedIn draft.
-2. Before making the repo public: rtl-reviewer pass on `rtl/`, check no secrets, bitstream into a GitHub Release (not in git), `.gitignore` check.
-3. Honest limits to state in the README: one person's 140 drawings, cross-validated 94 %; ARM baseline is plain C without NEON; power is a Vivado estimate.
+The project is finished (CLAUDE.md section 8). Optional follow-ups, none required:
+1. GitHub: About description + topics (text is in the chat history / docs/PORTFOLIO.md), a Release with `BOOT.bin` for people without Vivado.
+2. Post the LinkedIn text from `docs/PORTFOLIO.md` (YouTube: https://youtu.be/mclvHZH5C0E).
+3. Small hardware fixes from the review (docs/CDC.md "Known limits"): clamp the ROI position in `axil_regs.sv` first. Any RTL change needs: sim_unit, sim_cnn, full build, board test, new BOOT.bin on the SD card.
+4. A second person's drawings as a clean test set; stretch goals in CLAUDE.md section 4.
+Rules to keep: no `Co-Authored-By: Claude` in commits (CLAUDE.md rule 10); every number in docs must be measured.
 
 ## 12. Recommended model/effort
 - Phase 8: README/CV/LinkedIn drafting `/model sonnet` `/effort low` (or the docs-writer subagent); Phase 8 planning and a final RTL review `/model opus` `/effort high` (or the rtl-reviewer subagent). `/model opusplan` is not supported in the desktop app.
 
 ## 13. Git state
-- Repo: https://github.com/alvinhdr/fpga-edge-ai-video (private), branch `main`.
-- Tags `phase-0-done` .. `phase-7-done`. Submodule `third_party/vivado-library` @ `f4613ff`.
+- Repo: https://github.com/alvinhdr/FPGA-Edge-AI-Video (private), branch `main`.
+- Tags `phase-0-done` .. `phase-8-done`. Repo: https://github.com/alvinhdr/FPGA-Edge-AI-Video (public, renamed from fpga-edge-ai-video). History was rewritten once (Claude trailer removed): any old clone must be re-cloned. Submodule `third_party/vivado-library` @ `f4613ff`.
 - See `git log -1` for the last commit (this file is committed together with the Phase 6 close).
