@@ -32,7 +32,7 @@ Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~09:30: Pha
 | 5 CNN accelerator RTL | DONE (`phase-5-done`) | P=8: 1000/1000 bit-exact; 23,965 cycles = 240 us @100 MHz; all P=1..16 bit-exact |
 | 6 Integration | DONE (`phase-6-done`, 2026-10-08) | full build WNS +0.302 ns; board (SD boot): `j` -> INJECT 20/20 bit-exact; drawn digits predicted live on TV with confidence bar (user-confirmed) |
 | 7 Benchmarks | DONE (`phase-7-done`, 2026-10-08) | board: 10,000 MNIST images 97.96 %, 10,000/10,000 bit-exact, 9.6x vs ARM; 60.00 FPS 0 skipped; real drawings 79.3 % -> 94.0 % (2-fold CV) after fine-tuning; P sweep; SD boot with new model confirmed by user |
-| 8 Polish | **NEXT** | |
+| 8 Polish | **IN PROGRESS** | README + architecture.svg + docs/PORTFOLIO.md written; YouTube link in README; RTL review and public-repo decisions left |
 
 ## 4. What works right now (on the board)
 `build/BOOT.bin` (FSBL + bitstream + `edge_ai_demo`) on the microSD, boot jumper on SD. Laptop (1280x720, now forced by

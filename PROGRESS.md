@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current phase
-Phases 0-7 **DONE** (tags phase-0..7-done). **Phase 8 (polish: README, demo video, CV bullets) is next.**
+Phases 0-7 **DONE** (tags phase-0..7-done). **Phase 8 (polish) IN PROGRESS** (README, diagram, portfolio texts written; review + repo-public decisions left).
 Older sections below are history; the newest information is at the bottom of each phase section.
 
 ## Environment (checked 2026-10-07)
@@ -221,12 +221,17 @@ then with separate train/test capture sets.
   TV) was made from it for the README. `build/demo_trimmed_for_upload.mp4` (33 s, no audio, 67 MB, git-ignored) is for YouTube (unlisted) / LinkedIn.
   The raw video stays out of git.
 
+## Phase 8 - polish (IN PROGRESS, 2026-10-08)
+- Done: `README.md` (pitch, GIF, YouTube link https://youtu.be/mclvHZH5C0E, results table, how it works, verification, limits, build/run, next steps),
+  `docs/images/architecture.svg` (block diagram, rendered and checked), `docs/PORTFOLIO.md` (CV bullets, LinkedIn post, YouTube description,
+  interview pitch). All numbers come from `docs/RESULTS.md`. Re-verified before writing the README: sim_cnn for P = 1, 2, 4, 8, 16 with the
+  final weights (all layers on 20 images + 100 images FC/digit/conf): ALL PASS, same cycle counts.
+- Repo scan before going public: no secrets, no large tracked files of our own. The user's Gmail address is in the commit history (37 commits) and in
+  HANDOVER/PROGRESS.
+- Final RTL/CDC review: started with an opus helper (read-only); result to be recorded here.
+- Left for the user: decide license (README says "not chosen yet"), whether to make the repo public, email in history (noreply address?), whether to
+  keep CLAUDE.md/HANDOVER.md/PROGRESS.md in the public repo; upload of the video is done (YouTube link above, unlisted).
+
 ## Next step
-Phase 8: README (pitch, demo GIF/video, block diagram, results table, how to build, limits), photos of the live demo
-(TV showing box + AI view + digit + bar), demo video plan, 3-4 CV bullets, LinkedIn draft. Use the subagents in
-`.claude/agents/` if useful (docs-writer drafts, rtl-reviewer before making the repo public). Repo is still private.
-- Phase 8 assets so far: `docs/images/phase7_live_demo_6.jpg` (cropped so nobody is in the picture) and `phase7_live_demo_4.jpg`
-  (TV photos, fine-tuned model, 2026-10-08). The user also has a demo VIDEO filmed the night before with a TV (not in the repo yet).
-  Plan: do NOT commit the raw video to git (size, history); host it (YouTube unlisted / LinkedIn / GitHub Release) and link it
-  in the README; make a small GIF (< 10 MB) from a trimmed clip for the README. Check the video for private info (taskbar,
-  people, voices) before publishing. Note: the 4 in the photo is correct but with a very low confidence bar.
+1. Read the review result, fix real findings (re-simulate if RTL changes). 2. Ask the user: license, public/private, email, notes files.
+3. After the repo is public: put the BOOT.bin/bitstream in a GitHub Release (not in git). 4. Tag `phase-8-done`.
