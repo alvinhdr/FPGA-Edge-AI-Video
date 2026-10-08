@@ -16,9 +16,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 OUT = os.path.join(ROOT, "docs", "images", "architecture.png")
-FONT = r"C:\Windows\Fonts\Inkfree.ttf"
+FONT = r"C:\Windows\Fonts\segoeui.ttf"       # plain typed font; the LINES are hand-drawn, the TEXT is not
+FONT_BOLD = r"C:\Windows\Fonts\segoeuib.ttf"
 
-W, H = 900, 540          # logical size
+W, H = 900, 506          # logical size
 S = 4                    # drawing scale (supersampling); final image is W*2 x H*2
 INK = (28, 28, 34, 255)
 random.seed(7)           # same drawing every run
@@ -27,8 +28,8 @@ img = Image.new("RGBA", (W * S, H * S), (255, 255, 255, 255))
 d = ImageDraw.Draw(img)
 
 
-def font(size):
-    return ImageFont.truetype(FONT, int(size * S))
+def font(size, bold=False):
+    return ImageFont.truetype(FONT_BOLD if bold else FONT, int(size * S))
 
 
 def wobble_path(pts, amp=1.3, step=22):
@@ -104,19 +105,15 @@ def arrow(pts, width=1.8, head=11):
 
 
 def text(x, y, s, size=15, anchor="mm", bold=False):
-    f = font(size)
+    f = font(size, bold)
     lines = s.split("\n")
-    lh = size * 1.12
-    y0 = y - (len(lines) - 1) * lh / 2 if anchor == "mm" else y
+    lh = size * 1.22
+    y0 = y - (len(lines) - 1) * lh / 2
     for i, line in enumerate(lines):
-        d.text((x * S, (y0 + i * lh) * S), line, font=f, fill=INK, anchor=anchor if anchor != "mm" else "mm")
-        if bold:   # fake a heavier pen by drawing the line a second time, shifted a little
-            d.text((x * S + 0.9 * S, (y0 + i * lh) * S), line, font=f, fill=INK, anchor=anchor if anchor != "mm" else "mm")
+        d.text((x * S, (y0 + i * lh) * S), line, font=f, fill=INK, anchor=anchor)
 
 
 # ------------------------------------------------------------------ video side (top)
-box(258, 30, 340, 218, r=14, dashed=True)
-text(462, 50, "video side: 74.25 MHz", size=13, anchor="lm")
 
 box(10, 74, 104, 58)
 text(62, 103, "Laptop\nHDMI 720p60", size=14, bold=True)
@@ -144,8 +141,10 @@ text(205, 168, "same\npixels", size=12.5, anchor="lm")
 arrow([(477, 197), (504, 197)])
 
 # ------------------------------------------------------------------ network side (bottom)
-box(258, 296, 632, 200, r=14, dashed=True)
-text(270, 312, "network side: 100 MHz", size=13, anchor="lm")
+# one plain hand-drawn line separates the two clock sides
+stroke([(10, 272), (890, 272)], width=1.4, amp=1.0, retrace=False)
+text(12, 262, "video side: 74.25 MHz", size=12, anchor="lm")
+text(12, 284, "network side: 100 MHz", size=12, anchor="lm")
 
 box(276, 338, 366, 126)
 text(459, 358, "CNN accelerator (hand-written SystemVerilog)", size=14, bold=True)
@@ -165,15 +164,15 @@ arrow([(676, 411), (642, 411)], width=1.4, head=8)
 
 # ------------------------------------------------------------------ crossing arrows
 arrow([(547, 236), (547, 337)])
-text(536, 266,"image crosses to the\n100 MHz side (synchronized)", size=12, anchor="rm")
+text(536, 306, "image crosses to the\n100 MHz side (synchronized)", size=12, anchor="rm")
 
 # answer returns to the overlay: up on the right, along the top, down into the overlay
 arrow([(626, 338), (626, 22), (357, 22), (357, 66)])
 text(492, 9,"answer: digit + confidence, drawn on the next frame", size=12.5)
 
 # ------------------------------------------------------------------ margin notes
-text(682, 150, "no frame buffer:\npixel leaves 94 ns\nafter it came in,\n60 frames/s", size=12.5, anchor="lm")
-text(10, 526, "Board: Digilent Zybo Z7-10 (FPGA + ARM).  Every clock crossing is synchronized, see docs/CDC.md", size=12, anchor="lm")
+text(686, 188, "no frame buffer:\npixel leaves 94 ns\nafter it came in,\n60 frames/s", size=12.5, anchor="lm")
+text(10, 490, "Board: Digilent Zybo Z7-10 (FPGA + ARM).  Every clock crossing is synchronized, see docs/CDC.md", size=12, anchor="lm")
 
 final = img.convert("RGB").resize((W * 2, H * 2), Image.LANCZOS)
 final.save(OUT, optimize=True)
