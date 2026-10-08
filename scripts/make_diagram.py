@@ -20,13 +20,11 @@ OUT_XML = os.path.join(ROOT, "docs", "images", "architecture.drawio")
 FONT = r"C:\Windows\Fonts\arial.ttf"
 FONT_B = r"C:\Windows\Fonts\arialbd.ttf"
 
-W, H = 960, 540
+W, H = 960, 500
 
-# diagrams.net default colors: (fill, stroke)
-BLUE = ("#dae8fc", "#6c8ebf")      # video side, 74.25 MHz
-GREEN = ("#d5e8d4", "#82b366")     # network side, 100 MHz
-YELLOW = ("#fff2cc", "#d6b656")    # outside the board
-GRAY = ("#f5f5f5", "#666666")      # ARM CPU
+# black and white: white boxes, black outlines (the two clock sides are marked by a divider line, see DIVIDER_Y)
+BLUE = GREEN = YELLOW = GRAY = ("#ffffff", "#000000")
+DIVIDER_Y = 298
 
 # id: (x, y, w, h, [(line, bold), ...], colors)
 NODES = {
@@ -63,13 +61,14 @@ LABELS = [
     ("t2", 595, 320, ["crosses to the 100 MHz side", "(synchronized)"], "r"),
     ("t3", 565, 34, ["answer (digit + confidence) is drawn on the next frame"], "c"),
     ("t4", 425, 176, ["no frame buffer: a pixel leaves 94 ns after it came in, 60 frames/s"], "c"),
-    ("t5", 20, 518, ["Digilent Zybo Z7-10 (FPGA + ARM). Every clock crossing is synchronized, see docs/CDC.md"], "l"),
+    ("t5", 20, 482, ["Digilent Zybo Z7-10 (FPGA + ARM). Every clock crossing is synchronized, see docs/CDC.md"], "l"),
+    ("t6", 20, DIVIDER_Y - 11, ["video side: 74.25 MHz"], "l"),
+    ("t7", 20, DIVIDER_Y + 12, ["network side: 100 MHz"], "l"),
 ]
 
-LEGEND = [(BLUE, "video side: 74.25 MHz"), (GREEN, "network side: 100 MHz"),
-          (YELLOW, "outside the board"), (GRAY, "ARM CPU")]
-LEG_X = (20, 230, 440, 650)
-LEG_Y = 482
+LEGEND = []          # no colour legend in the black-and-white version
+LEG_X = ()
+LEG_Y = 0
 
 
 def edge_points(src, dst, ex, en, via):
@@ -108,6 +107,8 @@ def make_png():
         d.polygon([(px * S, py * S) for px, py in pts], fill="black")
         return base
 
+    d.line([(20 * S, DIVIDER_Y * S), ((W - 20) * S, DIVIDER_Y * S)], fill="black", width=int(1.6 * S))
+
     for _, src, dst, ex, en, via, both in EDGES:
         pts = edge_points(src, dst, ex, en, via)
         line = list(pts)
@@ -118,7 +119,7 @@ def make_png():
 
     for _, x, y, lines, anchor in LABELS:
         a = {"l": "lm", "c": "mm", "r": "rm"}[anchor]
-        small = y > 500
+        small = y > 470
         for i, line in enumerate(lines):
             put(x, y + i * 15 - (len(lines) - 1) * 7.5, line, 11 if not small else 10.5, False, a)
 
@@ -151,6 +152,10 @@ def make_xml():
         arr = f'<Array as="points">{pts}</Array>' if via else ""
         cells.append(f'<mxCell id="{eid}" style="{style}" edge="1" parent="1" source="{src}" target="{dst}">'
                      f'<mxGeometry relative="1" as="geometry">{arr}</mxGeometry></mxCell>')
+
+    cells.append('<mxCell id="divider" style="endArrow=none;html=1;strokeColor=#000000;strokeWidth=1.5;" edge="1" parent="1">'
+                 f'<mxGeometry relative="1" as="geometry"><mxPoint x="20" y="{DIVIDER_Y}" as="sourcePoint"/>'
+                 f'<mxPoint x="{W - 20}" y="{DIVIDER_Y}" as="targetPoint"/></mxGeometry></mxCell>')
 
     for tid, x, y, lines, anchor in LABELS:
         align = {"l": "left", "c": "center", "r": "right"}[anchor]
