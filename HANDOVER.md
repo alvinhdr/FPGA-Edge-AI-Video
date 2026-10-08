@@ -1,6 +1,6 @@
 # HANDOVER — Real-Time Edge AI Video Processor on FPGA
 
-Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~09:00: fine-tuned model deployed, board-verified.** Work may continue after this;
+Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~09:30: Phase 7 DONE.** Work may continue after this;
 **always check `PROGRESS.md` and `git log` for anything newer than this file.**
 
 ---
@@ -31,8 +31,8 @@ Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~09:00: fin
 | 4 ROI capture + CDC | DONE (`phase-4-done`) | sims pass; board: AI view live, ROI captures saved to PC |
 | 5 CNN accelerator RTL | DONE (`phase-5-done`) | P=8: 1000/1000 bit-exact; 23,965 cycles = 240 us @100 MHz; all P=1..16 bit-exact |
 | 6 Integration | DONE (`phase-6-done`, 2026-10-08) | full build WNS +0.302 ns; board (SD boot): `j` -> INJECT 20/20 bit-exact; drawn digits predicted live on TV with confidence bar (user-confirmed) |
-| 7 Benchmarks | **IN PROGRESS (almost done)** | board: 10,000 MNIST images 97.96 %, 10,000/10,000 bit-exact, 9.6x vs ARM; FPS 60.00, 0 skipped; real drawings 79.3 % -> 94.0 % (2-fold CV) after fine-tuning; P sweep done. Missing: live check of the fine-tuned model on the TV, SD card, tag |
-| 8 Polish | not started | |
+| 7 Benchmarks | DONE (`phase-7-done`, 2026-10-08) | board: 10,000 MNIST images 97.96 %, 10,000/10,000 bit-exact, 9.6x vs ARM; 60.00 FPS 0 skipped; real drawings 79.3 % -> 94.0 % (2-fold CV) after fine-tuning; P sweep; SD boot with new model confirmed by user |
+| 8 Polish | **NEXT** | |
 
 ## 4. What works right now (on the board)
 `build/BOOT.bin` (FSBL + bitstream + `edge_ai_demo`) on the microSD, boot jumper on SD. Laptop (1280x720, now forced by
@@ -42,14 +42,10 @@ keys p s j c w/a/z/d x i t + - h (see `sw/edge_ai_demo/main.c` header). `j` = 20
 LEDs: LD0 blink (board clock), LD1 (200 MHz PLL locked), LD2 (HDMI input locked), LD3 blink (pixel clock).
 
 ## 5. Work in progress
-Phase 7 is nearly finished. Details: `PROGRESS.md` "Phase 7", numbers + methods: `docs/RESULTS.md`.
-- DONE: ARM C model + benchmark (10,000 images on board), P sweep + full builds, FPS test (60.00 FPS, 0 skipped),
-  140 real drawings captured (`ml/captures/`, `captures.csv`), **fine-tuning** (`ml/finetune.py`, 2-fold CV 79.3 -> 94.0 %),
-  deployed model promoted to `ml/model_float.npz` + `ml/quant_params.npz` (old model in git history, commit 6dc8ce1),
-  re-verified: check_golden, sim_cnn 1000/1000, sim_unit, new full build (WNS +0.737), board benchmark 10,000/10,000 bit-exact.
-- Board right now: JTAG boot, running `sw/benchmark`. `build/BOOT.bin` (new bitstream + edge_ai_demo) is built but NOT yet
-  copied to the SD card (the SD card still has the old Phase 6 BOOT.bin, old model).
-- TODO: live check of the fine-tuned model with HDMI (draw 4s and 6s), copy BOOT.bin to SD, commit, tag `phase-7-done`.
+Nothing half-done. Phase 7 is finished and tagged. Next: Phase 8 (README, photos/video, CV bullets).
+- Board state: boot jumper SD, microSD (drive letter was D: on the build laptop) holds the NEW `BOOT.bin` (fine-tuned model +
+  edge_ai_demo). Old Phase 6 BOOT.bin: `build/BOOT_phase6_old.bin` (git-ignored; rebuildable from commit 6dc8ce1).
+- Project subagents exist in `.claude/agents/` (log-reader haiku, docs-writer sonnet, rtl-reviewer opus). New sessions may need a restart to see them.
 
 ## 6. Open problems and bugs
 - **Vitis 2025.1 platform.build() fails every time** ("Application error processing RPC"): the BSP misses its final
@@ -82,7 +78,7 @@ Phase 7 is nearly finished. Details: `PROGRESS.md` "Phase 7", numbers + methods:
 - `scripts/`: `build_hw.tcl` (whole Vivado project, `-tclargs project|all`), `build_sw.py` (Vitis Python API, `sw/<app>`), `program.tcl` (xsdb JTAG: `bit` or `all <app>`), `make_boot.py` (BOOT.bin, `--app`, `--copy-to`), `make_edid.py`, `synth_cnn.tcl` (OOC CNN per P), `sim_pixel_pipeline.py`, `sim_unit.py`, `sim_cnn.py`, `video_stream.py`, `capture_roi.py`.
 - `sw/`: `hello/`, `roi_capture/`, `edge_ai_demo/main.c` (Phase 6 live demo), `common/edge_ai_regs.h` (register map), `common/mnist_test_images.h` (20 images + golden results, generated).
 - `ml/`: `model.py`, `data_utils.py`, `train.py`, `quantize.py`, `golden_int.py`, `check_golden.py`, `evaluate.py`, `export.py` (weights .mem, `cnn_params_pkg.sv`, `wrom_p{P}.mem`, `brom_p{P}.mem`, vectors, `mnist_test_images.h`), `model_float.npz`, `quant_params.npz`, `export/`, `reports/accuracy.md`, `captures/`, `data/` (git-ignored).
-- `docs/`: `LEARNING.md`, `QUANTIZATION.md`, `CDC.md`, `TIMING.md` (#1-#5), `images/`. `RESULTS.md` to be written in Phase 7.
+- `docs/`: `LEARNING.md`, `QUANTIZATION.md`, `CDC.md`, `TIMING.md` (#1-#5), `images/`. `RESULTS.md` (all measured numbers and methods).
 
 ## 9. How to build and test (repo root `C:\Users\User\Documents\FPGA\Project\FPGA Edge AI Video`, PowerShell)
 ```
@@ -112,16 +108,15 @@ All in `docs/RESULTS.md` with methods. Key numbers (deployed fine-tuned model, P
 - P sweep (OOC, 100 MHz met): P1 1,767 us / 726 LUT / 3 DSP ... P8 240 us / 888 LUT / 10 DSP ... P16 176 us / 1,056 LUT / 18 DSP.
 
 ## 11. Next steps
-1. Copy `build/BOOT.bin` to the SD card (`.venv\Scripts\python.exe scripts/make_boot.py --app edge_ai_demo --copy-to G:\` after
-   checking the drive letter), boot jumper SD, HDMI connected: draw 4s and 6s, check the TV; take photos for the README.
-2. Commit, tag `phase-7-done`, push.
-3. Phase 8: README (pitch, demo GIF, block diagram, results table, build instructions, limits), demo video plan, 3-4 CV bullets,
-   LinkedIn draft. Be honest in the README about: one-person drawing set, cross-validated 94 %, ARM baseline is plain C (no NEON).
+1. Phase 8 plan with the user: README structure, which photos/video to take (TV with green box, AI view, digit, confidence bar; Paint on the laptop;
+   a drawn 4 and 6), 3-4 CV bullets from `docs/RESULTS.md` numbers, LinkedIn draft.
+2. Before making the repo public: rtl-reviewer pass on `rtl/`, check no secrets, bitstream into a GitHub Release (not in git), `.gitignore` check.
+3. Honest limits to state in the README: one person's 140 drawings, cross-validated 94 %; ARM baseline is plain C without NEON; power is a Vivado estimate.
 
 ## 12. Recommended model/effort
-- Phase 7 planning: `/model opus` `/effort high`. C model, scripts, benchmark app: `/model sonnet` `/effort medium`. RESULTS.md/docs: `/model sonnet` `/effort low`.
+- Phase 8: README/CV/LinkedIn drafting `/model sonnet` `/effort low` (or the docs-writer subagent); Phase 8 planning and a final RTL review `/model opus` `/effort high` (or the rtl-reviewer subagent). `/model opusplan` is not supported in the desktop app.
 
 ## 13. Git state
 - Repo: https://github.com/alvinhdr/fpga-edge-ai-video (private), branch `main`.
-- Tags `phase-0-done` .. `phase-6-done`. Submodule `third_party/vivado-library` @ `f4613ff`.
+- Tags `phase-0-done` .. `phase-7-done`. Submodule `third_party/vivado-library` @ `f4613ff`.
 - See `git log -1` for the last commit (this file is committed together with the Phase 6 close).

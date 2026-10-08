@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current phase
-Phases 0-6 **DONE** (tags phase-0..6-done). **Phase 7 (measurements) STARTED 2026-10-08.** See section "Phase 7" and "Next step".
+Phases 0-7 **DONE** (tags phase-0..7-done). **Phase 8 (polish: README, demo video, CV bullets) is next.**
 Older sections below are history; the newest information is at the bottom of each phase section.
 
 ## Environment (checked 2026-10-07)
@@ -163,7 +163,7 @@ Older sections below are history; the newest information is at the bottom of eac
 2. Known harmless warnings: dvi2rgb's unused ILA cores (CRITICAL WARNING Designutils 20-1280 / Vivado 12-4739),
    and Digilent board preset negative DQS-to-CLK delays (PSU-1..4).
 
-## Phase 7 - measurements (STARTED 2026-10-08, IN PROGRESS)
+## Phase 7 - measurements (DONE 2026-10-08)
 Decision: fine-tuning with real drawings only if real-drawing accuracy < ~90 % (option A; user did not object),
 then with separate train/test capture sets.
 - **Done (USB only, board via JTAG, boot jumper JTAG):**
@@ -195,8 +195,12 @@ then with separate train/test capture sets.
   2.040 W; ARM apps rebuilt; board 100-image check bit-exact; 10,000-image rerun in progress/see RESULTS.md.
 - Not redone for the new weights (they do not depend on the weights): P=1/16 full builds, OOC sweep numbers (RESULTS.md says so).
 
+- **SD boot with the fine-tuned model (user-confirmed 2026-10-08):** new `BOOT.bin` (SHA-256 11720876...) copied to the
+  microSD (drive D:, other files untouched, old BOOT.bin saved as `build/BOOT_phase6_old.bin`). Live on the TV: 4s "very good",
+  a drawn 6 -> 6 (confidence 158/255, captured: hardware == golden). One earlier 6 was read as 9 (not captured).
+  Boot jumper SD, both HDMI cables. **Phase 7 DONE.**
+
 ## Next step
-1. Finish: 10,000-image board rerun with the fine-tuned model -> RESULTS.md sections 1, 2 (replace/add), HANDOVER.
-2. `make_boot.py --app edge_ai_demo` -> new BOOT.bin for the SD card (user copies; boot jumper SD).
-3. Live demo check with HDMI: draw 4s and 6s; take photos for the README. Commit, tag `phase-7-done`.
-4. Phase 8: README, demo video, CV bullets.
+Phase 8: README (pitch, demo GIF/video, block diagram, results table, how to build, limits), photos of the live demo
+(TV showing box + AI view + digit + bar), demo video plan, 3-4 CV bullets, LinkedIn draft. Use the subagents in
+`.claude/agents/` if useful (docs-writer drafts, rtl-reviewer before making the repo public). Repo is still private.
