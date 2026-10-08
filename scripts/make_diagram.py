@@ -1,179 +1,180 @@
 # =============================================================================
 # File   : make_diagram.py
 # Project: Real-Time Edge AI Video Processor on FPGA
-# Purpose: Draw docs/images/architecture.png in a hand-drawn pen style: slightly wobbly
-#          lines, retraced boxes, handwriting font, margin notes. Black ink on white.
-#          (A PNG, so it looks the same everywhere; an SVG would depend on the viewer's fonts.)
+# Purpose: Make the architecture diagram in the standard diagrams.net (draw.io) look:
+#            docs/images/architecture.drawio   editable file (open it at app.diagrams.net)
+#            docs/images/architecture.png      picture for the README, drawn from the SAME shapes
+#          Both come from one list of boxes and arrows below, so they always match.
 #
 # Usage  : .venv\Scripts\python.exe scripts/make_diagram.py
-# Needs  : Pillow, and the Windows font "Ink Free" (C:\Windows\Fonts\Inkfree.ttf)
+# Needs  : Pillow, Windows fonts Arial (arial.ttf, arialbd.ttf)
 # =============================================================================
-import math
+import html
 import os
-import random
 
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-OUT = os.path.join(ROOT, "docs", "images", "architecture.png")
-FONT = r"C:\Windows\Fonts\segoeui.ttf"       # plain typed font; the LINES are hand-drawn, the TEXT is not
-FONT_BOLD = r"C:\Windows\Fonts\segoeuib.ttf"
+OUT_PNG = os.path.join(ROOT, "docs", "images", "architecture.png")
+OUT_XML = os.path.join(ROOT, "docs", "images", "architecture.drawio")
+FONT = r"C:\Windows\Fonts\arial.ttf"
+FONT_B = r"C:\Windows\Fonts\arialbd.ttf"
 
-W, H = 900, 506          # logical size
-S = 4                    # drawing scale (supersampling); final image is W*2 x H*2
-INK = (28, 28, 34, 255)
-random.seed(7)           # same drawing every run
+W, H = 960, 540
 
-img = Image.new("RGBA", (W * S, H * S), (255, 255, 255, 255))
-d = ImageDraw.Draw(img)
+# diagrams.net default colors: (fill, stroke)
+BLUE = ("#dae8fc", "#6c8ebf")      # video side, 74.25 MHz
+GREEN = ("#d5e8d4", "#82b366")     # network side, 100 MHz
+YELLOW = ("#fff2cc", "#d6b656")    # outside the board
+GRAY = ("#f5f5f5", "#666666")      # ARM CPU
 
+# id: (x, y, w, h, [(line, bold), ...], colors)
+NODES = {
+    "laptop": (20, 80, 110, 70, [("Laptop", True), ("HDMI 720p60", False)], YELLOW),
+    "hdmiin": (170, 80, 120, 70, [("HDMI in", True), ("(Digilent IP)", False)], BLUE),
+    "overlay": (330, 80, 190, 70, [("Overlay", True), ("green box, digit,", False), ("confidence bar", False)], BLUE),
+    "hdmiout": (560, 80, 120, 70, [("HDMI out", True), ("(Digilent IP)", False)], BLUE),
+    "tv": (740, 80, 110, 70, [("TV", True), ("picture + answer", False)], YELLOW),
+    "roi": (330, 200, 190, 80, [("ROI capture", True), ("224x224 box: gray, invert,", False), ("8x8 average -> 28x28", False)], BLUE),
+    "buf": (560, 200, 90, 80, [("ROI buffer", True), ("2 banks", False)], BLUE),
+    "cnn": (330, 360, 380, 100, [("CNN accelerator (hand-written SystemVerilog)", True),
+                                 ("conv 3x3 (8) + pool, conv 3x3 (16) + pool", False),
+                                 ("fully connected 400 -> 10, pick the biggest", False),
+                                 ("8 multiply-accumulate units: 240 microseconds", False)], GREEN),
+    "arm": (760, 360, 160, 100, [("ARM CPU + registers", True), ("settings, tests,", False), ("UART text output", False)], GRAY),
+}
 
-def font(size, bold=False):
-    return ImageFont.truetype(FONT_BOLD if bold else FONT, int(size * S))
+# edges: id, source, target, exit (x, y), entry (x, y), waypoints, both_ends
+EDGES = [
+    ("e1", "laptop", "hdmiin", (1, 0.5), (0, 0.5), [], False),
+    ("e2", "hdmiin", "overlay", (1, 0.5), (0, 0.5), [], False),
+    ("e3", "overlay", "hdmiout", (1, 0.5), (0, 0.5), [], False),
+    ("e4", "hdmiout", "tv", (1, 0.5), (0, 0.5), [], False),
+    ("e5", "hdmiin", "roi", (0.5, 1), (0, 0.5), [(230, 240)], False),
+    ("e6", "roi", "buf", (1, 0.5), (0, 0.5), [], False),
+    ("e7", "buf", "cnn", (0.5, 1), (0.724, 0), [], False),
+    ("e8", "cnn", "arm", (1, 0.5), (0, 0.5), [], True),
+    ("e9", "cnn", "overlay", (0.987, 0), (0.5, 0), [(705, 50), (425, 50)], False),
+]
 
+# free text: id, x, y, text lines, anchor ("l" left, "c" centre, "r" right of x)
+LABELS = [
+    ("t1", 240, 214, ["same pixels"], "l"),
+    ("t2", 595, 320, ["crosses to the 100 MHz side", "(synchronized)"], "r"),
+    ("t3", 565, 34, ["answer (digit + confidence) is drawn on the next frame"], "c"),
+    ("t4", 425, 176, ["no frame buffer: a pixel leaves 94 ns after it came in, 60 frames/s"], "c"),
+    ("t5", 20, 518, ["Digilent Zybo Z7-10 (FPGA + ARM). Every clock crossing is synchronized, see docs/CDC.md"], "l"),
+]
 
-def wobble_path(pts, amp=1.3, step=22):
-    """Subdivide a polyline and push the points sideways a little, like a hand-drawn line."""
-    out = []
-    for (x0, y0), (x1, y1) in zip(pts[:-1], pts[1:]):
-        length = math.hypot(x1 - x0, y1 - y0)
-        n = max(2, int(length / step))
-        nx, ny = (-(y1 - y0) / (length or 1), (x1 - x0) / (length or 1))
-        drift = random.uniform(-amp, amp)
-        for i in range(n):
-            t = i / n
-            drift += random.uniform(-amp, amp) * 0.55
-            drift = max(-2.2 * amp, min(2.2 * amp, drift))
-            out.append((x0 + (x1 - x0) * t + nx * drift, y0 + (y1 - y0) * t + ny * drift))
-    out.append(pts[-1])
-    return out
-
-
-def stroke(pts, width=1.7, amp=1.3, retrace=True):
-    for k in range(2 if retrace else 1):
-        path = wobble_path(pts, amp=amp * (1 if k == 0 else 0.8))
-        d.line([(x * S, y * S) for x, y in path], fill=INK, width=int(width * S * (1 if k == 0 else 0.7)), joint="curve")
-
-
-def rrect_points(x, y, w, h, r):
-    """Corner points of a rounded rectangle as a closed path (arcs as short segments)."""
-    pts = []
-    for cx, cy, a0 in ((x + w - r, y + r, -90), (x + w - r, y + h - r, 0), (x + r, y + h - r, 90), (x + r, y + r, 180)):
-        for i in range(0, 91, 18):
-            a = math.radians(a0 + i)
-            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
-    pts.append(pts[0])
-    return pts
-
-
-def box(x, y, w, h, r=10, width=1.8, dashed=False):
-    pts = rrect_points(x, y, w, h, r)
-    if dashed:
-        # walk along the outline: draw 11 px, skip 7 px; each dash is a short wobbly stroke
-        dash, gap = 11.0, 7.0
-        pos, drawing = 0.0, True
-        for (x0, y0), (x1, y1) in zip(pts[:-1], pts[1:]):
-            seg = math.hypot(x1 - x0, y1 - y0)
-            if seg == 0:
-                continue
-            done = 0.0
-            while done < seg:
-                limit = dash if drawing else gap
-                take = min(limit - pos, seg - done)
-                a = (x0 + (x1 - x0) * done / seg, y0 + (y1 - y0) * done / seg)
-                b = (x0 + (x1 - x0) * (done + take) / seg, y0 + (y1 - y0) * (done + take) / seg)
-                if drawing:
-                    stroke([a, b], width=width * 0.8, amp=0.5, retrace=False)
-                done += take
-                pos += take
-                if pos >= limit - 1e-9:
-                    drawing, pos = (not drawing), 0.0
-    else:
-        stroke(pts, width=width, amp=1.0)
-        # pen overshoot at the first corner, like a box closed by hand
-        stroke([(x + r + 3, y + 1.2), (x + r + 10, y - 0.8)], width=width * 0.8, amp=0.3, retrace=False)
+LEGEND = [(BLUE, "video side: 74.25 MHz"), (GREEN, "network side: 100 MHz"),
+          (YELLOW, "outside the board"), (GRAY, "ARM CPU")]
+LEG_X = (20, 230, 440, 650)
+LEG_Y = 482
 
 
-def arrow(pts, width=1.8, head=11):
-    stroke(pts, width=width, amp=1.1)
-    (x0, y0), (x1, y1) = pts[-2], pts[-1]
-    a = math.atan2(y1 - y0, x1 - x0)
-    for sgn in (-1, 1):
-        ang = a + math.pi + sgn * math.radians(26 + random.uniform(-4, 4))
-        ln = head + random.uniform(-1.2, 1.2)
-        stroke([(x1, y1), (x1 + ln * math.cos(ang), y1 + ln * math.sin(ang))], width=width, amp=0.25, retrace=False)
+def edge_points(src, dst, ex, en, via):
+    sx, sy, sw, sh = NODES[src][:4]
+    dx, dy, dw, dh = NODES[dst][:4]
+    p0 = (sx + sw * ex[0], sy + sh * ex[1])
+    p1 = (dx + dw * en[0], dy + dh * en[1])
+    return [p0, *via, p1]
 
 
-def text(x, y, s, size=15, anchor="mm", bold=False):
-    f = font(size, bold)
-    lines = s.split("\n")
-    lh = size * 1.22
-    y0 = y - (len(lines) - 1) * lh / 2
-    for i, line in enumerate(lines):
-        d.text((x * S, (y0 + i * lh) * S), line, font=f, fill=INK, anchor=anchor)
+# ----------------------------------------------------------------------------- PNG
+def make_png():
+    S = 3
+    img = Image.new("RGB", (W * S, H * S), "white")
+    d = ImageDraw.Draw(img)
+
+    def f(size, bold=False):
+        return ImageFont.truetype(FONT_B if bold else FONT, int(size * S))
+
+    def put(x, y, s, size, bold, anchor):
+        d.text((x * S, y * S), s, font=f(size, bold), fill="black", anchor=anchor)
+
+    for _, (x, y, w, h, lines, (fill, stroke)) in NODES.items():
+        d.rounded_rectangle([x * S, y * S, (x + w) * S, (y + h) * S], radius=9 * S, fill=fill, outline=stroke, width=int(1.6 * S))
+        lh = 16
+        y0 = y + h / 2 - (len(lines) - 1) * lh / 2
+        for i, (line, bold) in enumerate(lines):
+            put(x + w / 2, y0 + i * lh, line, 12.5, bold, "mm")
+
+    def arrowhead(p, q):
+        import math
+        a = math.atan2(q[1] - p[1], q[0] - p[0])
+        L, Wd = 11, 5.5
+        base = (q[0] - L * math.cos(a), q[1] - L * math.sin(a))
+        pts = [q, (base[0] + Wd * math.sin(a), base[1] - Wd * math.cos(a)), (base[0] - Wd * math.sin(a), base[1] + Wd * math.cos(a))]
+        d.polygon([(px * S, py * S) for px, py in pts], fill="black")
+        return base
+
+    for _, src, dst, ex, en, via, both in EDGES:
+        pts = edge_points(src, dst, ex, en, via)
+        line = list(pts)
+        line[-1] = arrowhead(pts[-2], pts[-1])
+        if both:
+            line[0] = arrowhead(pts[1], pts[0])
+        d.line([(px * S, py * S) for px, py in line], fill="black", width=int(1.6 * S), joint="curve")
+
+    for _, x, y, lines, anchor in LABELS:
+        a = {"l": "lm", "c": "mm", "r": "rm"}[anchor]
+        small = y > 500
+        for i, line in enumerate(lines):
+            put(x, y + i * 15 - (len(lines) - 1) * 7.5, line, 11 if not small else 10.5, False, a)
+
+    for (fill, stroke), x, (_, label) in zip([c for c, _ in LEGEND], LEG_X, LEGEND):
+        d.rounded_rectangle([x * S, LEG_Y * S, (x + 22) * S, (LEG_Y + 16) * S], radius=4 * S, fill=fill, outline=stroke, width=int(1.4 * S))
+        put(x + 30, LEG_Y + 8, label, 11.5, False, "lm")
+
+    img = img.resize((W * 2, H * 2), Image.LANCZOS)
+    img.save(OUT_PNG, optimize=True)
+    print("saved", OUT_PNG, img.size)
 
 
-# ------------------------------------------------------------------ video side (top)
+# ----------------------------------------------------------------------------- draw.io XML
+def make_xml():
+    cells = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>']
 
-box(10, 74, 104, 58)
-text(62, 103, "Laptop\nHDMI 720p60", size=14, bold=True)
-box(140, 74, 100, 58)
-text(190, 103, "HDMI in\n(Digilent IP)", size=14, bold=True)
-box(272, 68, 170, 70)
-text(357, 103, "Overlay\ngreen box, digit,\nconfidence bar", size=14, bold=True)
-box(486, 74, 100, 58)
-text(536, 103, "HDMI out\n(Digilent IP)", size=14, bold=True)
-box(680, 74, 100, 58)
-text(730, 103, "TV", size=16, bold=True)
+    def label_html(lines):
+        parts = [f"<b>{html.escape(t)}</b>" if bold else html.escape(t) for t, bold in lines]
+        return html.escape("<br>".join(parts), quote=True)
 
-arrow([(114, 103), (138, 103)])
-arrow([(240, 103), (270, 103)])
-arrow([(442, 103), (484, 103)])
-arrow([(586, 103), (678, 103)])
+    for nid, (x, y, w, h, lines, (fill, stroke)) in NODES.items():
+        style = f"rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor={fill};strokeColor={stroke};fontSize=12;"
+        cells.append(f'<mxCell id="{nid}" value="{label_html(lines)}" style="{style}" vertex="1" parent="1">'
+                     f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>')
 
-# ROI capture and buffer
-box(272, 158, 205, 78)
-text(374, 197, "ROI capture (224x224 box)\ngray, invert, 8x8 average\nthen 28 x 28 pixels", size=13.5, bold=False)
-box(506, 158, 82, 78)
-text(547, 197, "ROI\nbuffer\n2 banks", size=13.5)
-arrow([(190, 132), (190, 197), (270, 197)])
-text(205, 168, "same\npixels", size=12.5, anchor="lm")
-arrow([(477, 197), (504, 197)])
+    for eid, src, dst, ex, en, via, both in EDGES:
+        style = (f"edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;startArrow={'classic' if both else 'none'};"
+                 f"exitX={ex[0]};exitY={ex[1]};entryX={en[0]};entryY={en[1]};strokeColor=#000000;")
+        pts = "".join(f'<mxPoint x="{px}" y="{py}"/>' for px, py in via)
+        arr = f'<Array as="points">{pts}</Array>' if via else ""
+        cells.append(f'<mxCell id="{eid}" style="{style}" edge="1" parent="1" source="{src}" target="{dst}">'
+                     f'<mxGeometry relative="1" as="geometry">{arr}</mxGeometry></mxCell>')
 
-# ------------------------------------------------------------------ network side (bottom)
-# one plain hand-drawn line separates the two clock sides
-stroke([(10, 272), (890, 272)], width=1.4, amp=1.0, retrace=False)
-text(12, 262, "video side: 74.25 MHz", size=12, anchor="lm")
-text(12, 284, "network side: 100 MHz", size=12, anchor="lm")
+    for tid, x, y, lines, anchor in LABELS:
+        align = {"l": "left", "c": "center", "r": "right"}[anchor]
+        w = 330
+        x0 = {"l": x, "c": x - w / 2, "r": x - w}[anchor]
+        h = 15 * len(lines) + 6
+        txt = html.escape("<br>".join(html.escape(t) for t in lines), quote=True)
+        cells.append(f'<mxCell id="{tid}" value="{txt}" style="text;html=1;align={align};verticalAlign=middle;fontSize=11;" vertex="1" parent="1">'
+                     f'<mxGeometry x="{x0}" y="{y - h / 2}" width="{w}" height="{h}" as="geometry"/></mxCell>')
 
-box(276, 338, 366, 126)
-text(459, 358, "CNN accelerator (hand-written SystemVerilog)", size=14, bold=True)
-# the layers as small boxes
-for i, (lx, label) in enumerate(((288, "conv 3x3\n8 maps\n+ pool"), (368, "conv 3x3\n16 maps\n+ pool"), (448, "fully\nconnected\n400 to 10"), (528, "pick\nbiggest\n= digit"))):
-    box(lx, 376, 72, 52, r=7, width=1.4)
-    text(lx + 36, 402, label, size=11.5)
-    if i < 3:
-        arrow([(lx + 72, 402), (lx + 80, 402)], width=1.3, head=6)
-text(459, 450, "8 multiply-accumulate units, int8 numbers: 240 microseconds", size=12.5)
+    for i, ((fill, stroke), x, (_, label)) in enumerate(zip([c for c, _ in LEGEND], LEG_X, LEGEND)):
+        cells.append(f'<mxCell id="lg{i}" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};" vertex="1" parent="1">'
+                     f'<mxGeometry x="{x}" y="{LEG_Y}" width="22" height="16" as="geometry"/></mxCell>')
+        cells.append(f'<mxCell id="lt{i}" value="{html.escape(label)}" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">'
+                     f'<mxGeometry x="{x + 30}" y="{LEG_Y - 2}" width="180" height="20" as="geometry"/></mxCell>')
 
-box(676, 338, 200, 126)
-text(776, 366, "ARM CPU + registers", size=14, bold=True)
-text(776, 410, "set options, run tests,\nread the answer,\nprint over UART", size=12.5)
-arrow([(642, 401), (676, 401)], width=1.4, head=8)
-arrow([(676, 411), (642, 411)], width=1.4, head=8)
+    xml = ('<mxfile host="app.diagrams.net"><diagram name="Architecture" id="arch">'
+           f'<mxGraphModel dx="{W}" dy="{H}" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" '
+           f'pageScale="1" pageWidth="{W}" pageHeight="{H}" math="0" shadow="0"><root>' + "".join(cells) + "</root></mxGraphModel></diagram></mxfile>")
+    with open(OUT_XML, "w", encoding="utf-8") as fh:
+        fh.write(xml)
+    print("saved", OUT_XML)
 
-# ------------------------------------------------------------------ crossing arrows
-arrow([(547, 236), (547, 337)])
-text(536, 306, "image crosses to the\n100 MHz side (synchronized)", size=12, anchor="rm")
 
-# answer returns to the overlay: up on the right, along the top, down into the overlay
-arrow([(626, 338), (626, 22), (357, 22), (357, 66)])
-text(492, 9,"answer: digit + confidence, drawn on the next frame", size=12.5)
-
-# ------------------------------------------------------------------ margin notes
-text(686, 188, "no frame buffer:\npixel leaves 94 ns\nafter it came in,\n60 frames/s", size=12.5, anchor="lm")
-text(10, 490, "Board: Digilent Zybo Z7-10 (FPGA + ARM).  Every clock crossing is synchronized, see docs/CDC.md", size=12, anchor="lm")
-
-final = img.convert("RGB").resize((W * 2, H * 2), Image.LANCZOS)
-final.save(OUT, optimize=True)
-print("saved", OUT, final.size)
+if __name__ == "__main__":
+    make_png()
+    make_xml()
