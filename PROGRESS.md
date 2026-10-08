@@ -214,6 +214,13 @@ then with separate train/test capture sets.
   Demo videos: `20261007_212131.mp4` (old model, portrait, 150 MB) and `20261008_092245.mp4` (final model, no filter yet, 28 s, 60 MB)
   in the user's Downloads; user will use the second for now. Not in git (size); host + link, GIF later.
 
+- **Final demo video (user, 2026-10-08 09:41, final model + filter): `Downloads/20261008_094153.mp4`** (40 s, 87 MB, metadata rotation 180).
+  Checked frame by frame: digits 0-8 read correctly, an empty box shows nothing, stray dot/stroke fragments show nothing or a
+  very short bar, one honest miss (a small round 0 read as 9 with a short bar), then 9 correct; last ~8 s = PuTTY text filmed at an angle.
+  Audio almost silent (mean -47 dB; the user should still listen once before publishing). `docs/images/demo.gif` (4.4 MB, 30 s, cropped to the
+  TV) was made from it for the README. `build/demo_trimmed_for_upload.mp4` (33 s, no audio, 67 MB, git-ignored) is for YouTube (unlisted) / LinkedIn.
+  The raw video stays out of git.
+
 ## Next step
 Phase 8: README (pitch, demo GIF/video, block diagram, results table, how to build, limits), photos of the live demo
 (TV showing box + AI view + digit + bar), demo video plan, 3-4 CV bullets, LinkedIn draft. Use the subagents in
