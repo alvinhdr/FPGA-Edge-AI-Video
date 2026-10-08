@@ -240,6 +240,13 @@ then with separate train/test capture sets.
 - Left for the user: decide license (README says "not chosen yet"), whether to make the repo public, email in history (noreply address?), whether to
   keep CLAUDE.md/HANDOVER.md/PROGRESS.md in the public repo; upload of the video is done (YouTube link above, unlisted).
 
+- **Phase 8 decisions (user, 2026-10-08): license MIT (done), notes files stay, no Claude as contributor.** Commits from 6c7317e on have no
+  trailer; the 39 older ones have `Co-Authored-By: Claude`. The user chose to rewrite the history (option A), but the tool permission blocked git history
+  rewrites in the session, so `scripts/remove_claude_trailer.py` was written for the USER to run (backup branch `backup-before-rewrite`, rewrites only main + tags,
+  verifies, fixes old commit ids in the .md notes, does NOT push; tested on a throwaway clone: 0 Claude lines in main, backup keeps 39, tags moved).
+  After it: the user (or Claude with permission) runs `git push --force-with-lease origin main` and `git push --force origin --tags`.
+- Architecture diagram redone twice at the user's request: black and white, then simple rounded boxes with three numbered steps.
+
 ## Next step
 1. Read the review result, fix real findings (re-simulate if RTL changes). 2. Ask the user: license, public/private, email, notes files.
 3. After the repo is public: put the BOOT.bin/bitstream in a GitHub Release (not in git). 4. Tag `phase-8-done`.
