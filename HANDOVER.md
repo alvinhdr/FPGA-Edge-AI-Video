@@ -43,8 +43,8 @@ LEDs: LD0 blink (board clock), LD1 (200 MHz PLL locked), LD2 (HDMI input locked)
 
 ## 5. Work in progress
 Polish done: `CONF_MIN` overlay filter (register 0x28, default 0 in HW, 35 set by edge_ai_demo, keys `.` `,`), board-confirmed. Nothing half-done except the SD copy. Phase 7 is finished and tagged. Next: Phase 8 (README, photos/video, CV bullets).
-- Board state: boot jumper SD; the board was last programmed over JTAG with the newest build (CONF_MIN filter). The microSD (drive D: on the
-  build laptop) still holds the fine-tuned model WITHOUT the filter; `build/BOOT.bin` (with filter) is built, copy pending (`make_boot.py --copy-to D:\`). Old Phase 6 BOOT.bin: `build/BOOT_phase6_old.bin` (git-ignored; rebuildable from commit 6dc8ce1).
+- Board state: boot jumper SD; the microSD (drive D: on the build laptop) holds the FINAL `BOOT.bin` (fine-tuned model + CONF_MIN filter, SHA-256 5c058558...),
+  boot-tested by the user (`j` = 20/20 bit-exact). Older BOOT.bin copies are in `build/` (git-ignored).
 - Project subagents exist in `.claude/agents/` (log-reader haiku, docs-writer sonnet, rtl-reviewer opus). New sessions may need a restart to see them.
 
 ## 6. Open problems and bugs

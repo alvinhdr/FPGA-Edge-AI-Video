@@ -208,7 +208,9 @@ then with separate train/test capture sets.
   RESULT unfiltered); mutation (`>=` -> `>`) is caught; all unit sims + pixel sims pass.
   Full rebuild: **WNS +0.645 ns, WHS +0.033**, 2,626 LUT, 2,993 FF, 5 BRAM, 10 DSP, 2.041 W. Loaded over JTAG (works with the SD jumper):
   **user-confirmed on the board:** `conf_min=35` at start, `.`/`,` change it by 8 (35 -> 83 -> 35), PuTTY PRED lines only >= 35,
-  empty box shows nothing, normal digits still shown. New `build/BOOT.bin` (SHA-256 5c058558...) made; SD card copy pending.
+  empty box shows nothing, normal digits still shown. New `build/BOOT.bin` (SHA-256 5c058558...) made; **SD card updated 2026-10-08 (drive D:, SHA-256 verified, other files untouched; previous BOOT.bin saved as
+  `build/BOOT_finetuned_nofilter.bin`). After a power cycle from SD the user confirmed `j`: INJECT 20/20 bit-exact vs golden, 20/20 correct,
+  latency 23965 cycles. The project is in its final demo state (fine-tuned model + CONF_MIN filter).**
   Demo videos: `20261007_212131.mp4` (old model, portrait, 150 MB) and `20261008_092245.mp4` (final model, no filter yet, 28 s, 60 MB)
   in the user's Downloads; user will use the second for now. Not in git (size); host + link, GIF later.
 
