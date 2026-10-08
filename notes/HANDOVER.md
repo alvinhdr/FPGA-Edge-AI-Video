@@ -1,7 +1,7 @@
 # HANDOVER — Real-Time Edge AI Video Processor on FPGA
 
 Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08: ALL PHASES DONE, repo public.** Work may continue after this;
-**always check `PROGRESS.md` and `git log` for anything newer than this file.**
+**always check `notes/PROGRESS.md` and `git log` for anything newer than this file.**
 
 ---
 
@@ -24,7 +24,7 @@ Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08: ALL PHASES
 ## 3. Current status
 | Phase | Status | Evidence |
 |---|---|---|
-| 0 Setup | DONE (`phase-0-done`) | repo + env in PROGRESS.md |
+| 0 Setup | DONE (`phase-0-done`) | repo + env in notes/PROGRESS.md |
 | 1 HDMI pass-through | DONE (`phase-1-done`) | user saw laptop picture on TV through FPGA; UART hello |
 | 2 Pixel pipeline overlay | DONE (`phase-2-done`) | sims bit-exact; board: green box + "7", SW0 gray, SW1 hide |
 | 3 ML golden model | DONE (`phase-3-done`) | float 98.24 %, int8 golden 98.25 % (MNIST test); PyTorch cross-check bit-exact (2,000 img) |
@@ -71,7 +71,7 @@ Polish done: `CONF_MIN` overlay filter (register 0x28, default 0 in HW, 35 set b
 - Vitis workspace outside repo (`~/fpga_ws/fpga-edge-ai-video`) because repo path has spaces. Run Vivado/Vitis/xsdb from **PowerShell** (Git Bash: "Access is denied" for .bat). Plusargs without "=".
 
 ## 8. File map
-- `CLAUDE.md` spec/rules. `PROGRESS.md` running log. `HANDOVER.md` this file.
+- `CLAUDE.md` spec/rules. `notes/PROGRESS.md` running log. `notes/HANDOVER.md` this file.
 - `rtl/`: `top.sv` (top level), `video_pkg.sv`, `pixel_pipeline.sv` (7-stage chain), `pix_pos_counter.sv`, `rgb2gray.sv`, `roi_overlay.sv`, `digit_overlay.sv`, `conf_bar_overlay.sv`, `font_rom.sv` + `font_digits_8x8.mem`, `ai_view_overlay.sv`, `roi_capture.sv`, `ram_tdp.sv`, `cdc_sync_2ff.sv`, `cdc_pulse_sync.sv`, `cdc_bus_sync.sv`, `axil_regs.sv`, `ai_core.sv` (clk_acc: regs + CNN + inject RAM), CNN: `cnn_pkg.sv`, `cnn_top.sv`, `cnn_controller.sv`, `cnn_mac_array.sv`, `cnn_requant.sv`, `cnn_argmax.sv`; `edid_720p_only.data`.
 - `tb/`: `tb_pixel_pipeline.sv`, `tb_cdc.sv`, `tb_axil_regs.sv`, `tb_cnn_units.sv`, CNN/ai_core testbenches (see `scripts/sim_cnn.py`, `scripts/sim_unit.py`).
 - `constraints/`: `zybo_z7_10.xdc` (pins from Digilent master XDC, clocks), `zybo_z7_10_impl.xdc` (async clock groups, implementation only).
@@ -80,7 +80,7 @@ Polish done: `CONF_MIN` overlay filter (register 0x28, default 0 in HW, 35 set b
 - `ml/`: `model.py`, `data_utils.py`, `train.py`, `quantize.py`, `golden_int.py`, `check_golden.py`, `evaluate.py`, `export.py` (weights .mem, `cnn_params_pkg.sv`, `wrom_p{P}.mem`, `brom_p{P}.mem`, vectors, `mnist_test_images.h`), `model_float.npz`, `quant_params.npz`, `export/`, `reports/accuracy.md`, `captures/`, `data/` (git-ignored).
 - `docs/`: `LEARNING.md`, `QUANTIZATION.md`, `CDC.md`, `TIMING.md` (#1-#5), `images/`. `RESULTS.md` (all measured numbers and methods).
 
-## 9. How to build and test (repo root `C:\Users\User\Documents\FPGA\Project\FPGA Edge AI Video`, PowerShell)
+## 9. How to build and test (repo root `C:\Users\User\Documents\Claude Code\FPGA Edge AI Video` (moved from `Documents\FPGA\Project`), PowerShell)
 ```
 git submodule update --init                                      # after a fresh clone
 python -m venv .venv; .\.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu

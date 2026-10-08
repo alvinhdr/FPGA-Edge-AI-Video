@@ -252,6 +252,11 @@ then with separate train/test capture sets.
   diagrams.net style: `docs/images/architecture.drawio` (editable) + `architecture.png`, both made by `scripts/make_diagram.py`.
   Local-only branch `backup-before-rewrite` (never pushed) still has the original messages; delete with `git branch -D backup-before-rewrite` when wanted.
 
+- **Repo tidy-up (2026-10-08, after going public):** `PROGRESS.md` and `HANDOVER.md` moved to `notes/` (`CLAUDE.md` stays in the repo root: Claude Code
+  reads it only there; all references updated). README rewritten in plainer, shorter sentences (same facts and numbers; no personal opinions added,
+  because none were given). The project folder is now `C:/Users/User/Documents/Claude Code/FPGA Edge AI Video` (moved from `Documents/FPGA/Project`).
+  Open question for the user: add one or two sentences of their own to the README ("What was hard" / "what I am proud of").
+
 ## Next step
 Nothing is required. Optional: GitHub About (description, topics), a GitHub Release with BOOT.bin, post the LinkedIn text from docs/PORTFOLIO.md,
 fix the known limits listed in docs/CDC.md (ROI clamp in hardware first), a second person's drawings as a clean test set.

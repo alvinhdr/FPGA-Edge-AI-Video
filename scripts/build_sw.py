@@ -16,7 +16,7 @@
 #   - Needs the FULL "Vitis Unified Software Platform" edition with Zynq-7000 (ARM
 #     toolchain in C:\Xilinx\2025.1\gnu\aarch32, lopper/sdtgen in Vitis\bin). With only
 #     "Vivado ML Standard" installed, platform creation fails with the vague message
-#     "Error in generating SDT" (full story in PROGRESS.md / HANDOVER.md).
+#     "Error in generating SDT" (full story in notes/PROGRESS.md / notes/HANDOVER.md).
 #   - Vivado\bin is also added to PATH (harmless; vitis.bat only does it for the old
 #     C:\Xilinx\Vivado\<ver> install layout).
 #   - The XSA is copied to a path without spaces before Vitis reads it.

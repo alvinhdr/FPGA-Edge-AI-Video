@@ -71,7 +71,7 @@ Optional, later only: Digilent Pcam 5C camera (only for the Zybo Z7-20; Digilent
 ### Software tools (to be confirmed in Phase 0)
 - **Vivado** (free edition supports both Zybo Z7 variants) and **Vitis** for bare-metal C. Note: Digilent says that for their 2024.1+ releases they support **Vitis Classic mode** only.
 - **Python 3** with PyTorch (or similar) and NumPy for training and the golden model.
-- **Simulator:** prefer Verilator or Icarus Verilog with **cocotb** (Python testbenches, very common in industry). If those are not available on the user's OS, use Vivado's built-in simulator (xsim) with SystemVerilog testbenches. Decide in Phase 0 and record it in `PROGRESS.md`.
+- **Simulator:** prefer Verilator or Icarus Verilog with **cocotb** (Python testbenches, very common in industry). If those are not available on the user's OS, use Vivado's built-in simulator (xsim) with SystemVerilog testbenches. Decide in Phase 0 and record it in `notes/PROGRESS.md`.
 - **Git + GitHub.**
 
 ---
@@ -133,15 +133,15 @@ Optional, later only: Digilent Pcam 5C camera (only for the Zybo Z7-20; Digilent
 
 ## 4. Phases and milestones
 
-Work **one phase at a time.** Each phase ends with a milestone the user can see or test. At the end of each phase: update `PROGRESS.md`, update `docs/LEARNING.md`, commit, push, create a git tag (`phase-N-done`), and give the user a short plain-English summary.
+Work **one phase at a time.** Each phase ends with a milestone the user can see or test. At the end of each phase: update `notes/PROGRESS.md`, update `docs/LEARNING.md`, commit, push, create a git tag (`phase-N-done`), and give the user a short plain-English summary.
 
 **Rule:** a phase is done only when there is **evidence**: a passing simulation log, a build report, or the user confirming a board test. Never mark something done based on "it should work".
 
 ### Phase 0 — Setup and environment check
 - Ask the user to confirm: **board variant (look at the board: Z7-10 or Z7-20)**, operating system, Vivado/Vitis version installed, whether Python/Git are installed, and their GitHub username and repo URL (or help them create the repo).
 - Check which simulators are available (Verilator, Icarus, cocotb, xsim). Install what is missing if the user agrees.
-- Create the repo structure (Section 6), `.gitignore` for Vivado/Vitis outputs, `README.md` (placeholder), `PROGRESS.md`, `docs/LEARNING.md`.
-- **Milestone:** repo pushed to GitHub, environment recorded in `PROGRESS.md`.
+- Create the repo structure (Section 6), `.gitignore` for Vivado/Vitis outputs, `README.md` (placeholder), `notes/PROGRESS.md`, `docs/LEARNING.md`.
+- **Milestone:** repo pushed to GitHub, environment recorded in `notes/PROGRESS.md`.
 
 ### Phase 1 — HDMI pass-through
 - Build a Vivado project **from Tcl scripts** (reproducible; no hand-clicked project committed): Zynq PS (for clocks and UART), `dvi2rgb`, `rgb2dvi`, constraints.
@@ -220,7 +220,7 @@ Use this table:
 | Hard debugging (no video on the monitor, timing failures, simulation mismatches you could not fix in 2 tries) | `opus` | `xhigh` |
 | Writing RTL modules and their testbenches | `opus` | `medium` |
 | Python training/golden model, Tcl build scripts, C drivers, helper scripts | `sonnet` | `medium` |
-| README, docs, PROGRESS.md, LEARNING.md, small edits | `sonnet` | `low` |
+| README, docs, notes/PROGRESS.md, LEARNING.md, small edits | `sonnet` | `low` |
 | A very long, very hard autonomous task where Opus keeps failing | `fable` | `high` — **only suggest this if the user agrees first**, because Fable may use paid usage credits on some plans |
 
 For subagents you start yourself (for example, searching documentation or reading big log files), you may set their model directly: use `haiku` or `sonnet` for simple searches and summaries, `opus` for code review of RTL.
@@ -235,10 +235,11 @@ Do not switch-recommend too often. One recommendation per phase or per change in
 
 ```
 fpga-edge-ai-video/
-├── CLAUDE.md               # this file
+├── CLAUDE.md               # this file (must stay in the repo root: Claude Code reads it from there)
 ├── README.md               # public project page (Phase 8)
-├── PROGRESS.md             # running log: what is done, what is next, decisions, problems
-├── HANDOVER.md             # created/updated when the user changes account (Section 9)
+├── notes/
+│   ├── PROGRESS.md         # running log: what is done, what is next, decisions, problems
+│   └── HANDOVER.md         # created/updated when the user changes account (Section 9)
 ├── docs/
 │   ├── LEARNING.md         # glossary + interview Q&A for the user
 │   ├── QUANTIZATION.md     # exact integer math the hardware follows
@@ -260,12 +261,12 @@ Never commit Vivado/Vitis generated folders (`.Xil`, `*.cache`, `*.runs`, `*.gen
 
 ## 7. Working rules
 
-1. **Ask before big decisions** (changing the architecture, the CNN, the tools, or anything in "Key design decisions"). Small implementation details: decide yourself and note them in `PROGRESS.md`.
+1. **Ask before big decisions** (changing the architecture, the CNN, the tools, or anything in "Key design decisions"). Small implementation details: decide yourself and note them in `notes/PROGRESS.md`.
 2. **Physical steps belong to the user.** Programming the board, plugging cables, looking at the monitor: give the user short numbered steps, then wait for their result. You may run Vivado/Vitis in batch mode and program the board from the command line if it is connected to this computer, but always tell the user first and ask them to report what the monitor shows.
 3. **No fake results.** Never invent pin numbers, register addresses, measurements, or accuracy numbers. If you are not sure about a fact (IP behavior, a Vivado option), check the official documentation or ask.
 4. **Verify before moving on.** Simulate before building. Build before asking the user to test on the board.
 5. **Small steps, frequent commits.** Clear commit messages. Push to GitHub at least at every milestone.
-6. **Keep `PROGRESS.md` always up to date** (after every work session, not only at milestones). It must always contain: current phase, what works, what is in progress, open problems, decisions made, and the exact next step. This makes account changes and new sessions easy.
+6. **Keep `notes/PROGRESS.md` always up to date** (after every work session, not only at milestones). It must always contain: current phase, what works, what is in progress, open problems, decisions made, and the exact next step. This makes account changes and new sessions easy.
 7. **Teach.** After each module: a short simple explanation for the user and an update to `docs/LEARNING.md`. If the user asks "why?", answer simply, with an example.
 8. **Code quality:** readable SystemVerilog, consistent naming (`clk_pix`, `clk_acc`, `rst_n`, `_q` for registers), a comment header in every file, parameters instead of magic numbers, no latches, synchronous logic, every clock crossing documented.
 9. **If stuck after 2 attempts on the same problem:** stop, explain the problem simply, list what you tried, and recommend a model/effort change (Section 5) or ask the user for information (for example a photo of the monitor or a log file).
@@ -290,8 +291,8 @@ The user may switch to a different Claude account. A new account will NOT have t
 **Trigger:** when the user says anything like "I want to change account", "change account", "switch account", "handover", "make handover", or "ganti akun" — do ALL of the following immediately:
 
 1. **Finish or safely pause** the current small task (do not leave half-edited files). If something is broken, say so clearly.
-2. **Update `PROGRESS.md`** fully.
-3. **Write `HANDOVER.md`** (overwrite the old one) with ALL of these sections, very detailed and specific (file names, module names, numbers, commands):
+2. **Update `notes/PROGRESS.md`** fully.
+3. **Write `notes/HANDOVER.md`** (overwrite the old one) with ALL of these sections, very detailed and specific (file names, module names, numbers, commands):
    1. **Project summary** — 5 lines: what the project is and the goal.
    2. **User profile** — beginner, simple English, solo CV project, teaching mode, board variant, OS, tool versions.
    3. **Current status** — current phase; each phase marked done / in progress / not started, with evidence (test logs, user-confirmed board tests).
@@ -305,8 +306,8 @@ The user may switch to a different Claude account. A new account will NOT have t
    11. **Next steps** — the next 3–5 concrete tasks, in order, with the very first command or action.
    12. **Recommended model/effort** for the next task.
    13. **Git state** — branch, last commit hash and message, last tag, whether everything is pushed.
-4. **Commit and push** everything (including `HANDOVER.md`) to GitHub. Confirm the push worked.
-5. **Print a ready-to-paste "new account prompt"** in a code block for the user. It must tell the new Claude to: read `CLAUDE.md`, then `HANDOVER.md`, then `PROGRESS.md`; summarize the project status back to the user in simple English; confirm the next step with the user before writing code; and follow all rules in `CLAUDE.md`. Include the GitHub repo URL and the local folder path.
+4. **Commit and push** everything (including `notes/HANDOVER.md`) to GitHub. Confirm the push worked.
+5. **Print a ready-to-paste "new account prompt"** in a code block for the user. It must tell the new Claude to: read `CLAUDE.md`, then `notes/HANDOVER.md`, then `notes/PROGRESS.md`; summarize the project status back to the user in simple English; confirm the next step with the user before writing code; and follow all rules in `CLAUDE.md`. Include the GitHub repo URL and the local folder path.
 6. Tell the user in simple words what to do: (a) make sure the project folder is on the computer (or clone it from GitHub), (b) log in to Claude Code with the new account, (c) open Claude Code in the project folder, (d) paste the prompt.
 
 The handover must be detailed enough that a new Claude with **zero memory** can continue without asking the user to re-explain anything.
