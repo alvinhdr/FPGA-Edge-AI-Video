@@ -1,114 +1,114 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 650" width="980" height="650" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 626" width="980" height="626" font-family="Helvetica, Arial, sans-serif">
   <title>Architecture of the Real-Time Edge AI Video Processor on FPGA</title>
   <defs>
     <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#37474f"/>
+      <path d="M0,0 L10,5 L0,10 z" fill="#000000"/>
     </marker>
     <marker id="arrC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#e65100"/>
+      <path d="M0,0 L10,5 L0,10 z" fill="#000000"/>
     </marker>
   </defs>
-  <rect width="980" height="650" fill="#ffffff"/>
+  <rect width="980" height="626" fill="#ffffff"/>
 
   <!-- clock domain panels -->
-  <rect x="262" y="14" width="500" height="262" rx="12" fill="#e8f5e9" stroke="#43a047" stroke-width="2"/>
-  <text x="274" y="36" font-size="14" font-weight="700" fill="#1b5e20">Pixel clock domain: clk_pix 74.25 MHz (recovered from HDMI)</text>
-  <text x="274" y="54" font-size="12" fill="#2e7d32">no frame buffer: a pixel leaves 7 clocks (94 ns) after it came in</text>
+  <rect x="262" y="14" width="500" height="262" fill="none" stroke="#000000" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="274" y="36" font-size="14" font-weight="600" fill="#000000">Pixel clock domain: clk_pix 74.25 MHz (recovered from HDMI)</text>
+  <text x="274" y="54" font-size="12" fill="#000000">no frame buffer: a pixel leaves 7 clocks (94 ns) after it came in</text>
 
-  <rect x="262" y="332" width="696" height="252" rx="12" fill="#e3f2fd" stroke="#1e88e5" stroke-width="2"/>
-  <text x="274" y="354" font-size="14" font-weight="700" fill="#0d47a1">Accelerator clock domain: clk_acc 100 MHz (Zynq PS FCLK0)</text>
+  <rect x="262" y="332" width="696" height="228" fill="none" stroke="#000000" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="274" y="354" font-size="14" font-weight="600" fill="#000000">Accelerator clock domain: clk_acc 100 MHz (Zynq PS FCLK0)</text>
 
   <!-- video path -->
-  <rect x="14" y="84" width="100" height="62" rx="8" fill="#eceff1" stroke="#546e7a" stroke-width="1.5"/>
+  <rect x="14" y="84" width="100" height="62" fill="#ffffff" stroke="#000000" stroke-width="1.1"/>
   <text x="64" y="110" font-size="13" text-anchor="middle" font-weight="600">Laptop</text>
   <text x="64" y="127" font-size="11" text-anchor="middle">HDMI 720p60</text>
 
-  <rect x="140" y="84" width="104" height="62" rx="8" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <rect x="140" y="84" width="104" height="62" fill="#ffffff" stroke="#000000" stroke-width="1.1"/>
   <text x="192" y="110" font-size="13" text-anchor="middle" font-weight="600">dvi2rgb</text>
   <text x="192" y="127" font-size="11" text-anchor="middle">HDMI RX (Digilent)</text>
 
-  <rect x="280" y="84" width="96" height="62" rx="8" fill="#ffffff" stroke="#43a047" stroke-width="1.5"/>
+  <rect x="280" y="84" width="96" height="62" fill="#ffffff" stroke="#000000" stroke-width="1.1"/>
   <text x="328" y="110" font-size="13" text-anchor="middle" font-weight="600">x / y counter</text>
   <text x="328" y="127" font-size="11" text-anchor="middle">from DE signal</text>
 
-  <rect x="400" y="84" width="170" height="62" rx="8" fill="#ffffff" stroke="#43a047" stroke-width="1.5"/>
+  <rect x="400" y="84" width="170" height="62" fill="#ffffff" stroke="#000000" stroke-width="1.1"/>
   <text x="485" y="106" font-size="13" text-anchor="middle" font-weight="600">Overlay</text>
   <text x="485" y="122" font-size="11" text-anchor="middle">green box, AI view (28x28),</text>
   <text x="485" y="136" font-size="11" text-anchor="middle">predicted digit, confidence bar</text>
 
-  <rect x="596" y="84" width="104" height="62" rx="8" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <rect x="596" y="84" width="104" height="62" fill="#ffffff" stroke="#000000" stroke-width="1.1"/>
   <text x="648" y="110" font-size="13" text-anchor="middle" font-weight="600">rgb2dvi</text>
   <text x="648" y="127" font-size="11" text-anchor="middle">HDMI TX (Digilent)</text>
 
-  <rect x="800" y="84" width="100" height="62" rx="8" fill="#eceff1" stroke="#546e7a" stroke-width="1.5"/>
+  <rect x="800" y="84" width="100" height="62" fill="#ffffff" stroke="#000000" stroke-width="1.1"/>
   <text x="850" y="110" font-size="13" text-anchor="middle" font-weight="600">Monitor / TV</text>
   <text x="850" y="127" font-size="11" text-anchor="middle">live picture + AI</text>
 
-  <line x1="114" y1="115" x2="138" y2="115" stroke="#37474f" stroke-width="2" marker-end="url(#arr)"/>
-  <line x1="244" y1="115" x2="278" y2="115" stroke="#37474f" stroke-width="2" marker-end="url(#arr)"/>
-  <line x1="376" y1="115" x2="398" y2="115" stroke="#37474f" stroke-width="2" marker-end="url(#arr)"/>
-  <line x1="570" y1="115" x2="594" y2="115" stroke="#37474f" stroke-width="2" marker-end="url(#arr)"/>
-  <line x1="700" y1="115" x2="798" y2="115" stroke="#37474f" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="114" y1="115" x2="138" y2="115" stroke="#000000" stroke-width="1.3" marker-end="url(#arr)"/>
+  <line x1="244" y1="115" x2="278" y2="115" stroke="#000000" stroke-width="1.3" marker-end="url(#arr)"/>
+  <line x1="376" y1="115" x2="398" y2="115" stroke="#000000" stroke-width="1.3" marker-end="url(#arr)"/>
+  <line x1="570" y1="115" x2="594" y2="115" stroke="#000000" stroke-width="1.3" marker-end="url(#arr)"/>
+  <line x1="700" y1="115" x2="798" y2="115" stroke="#000000" stroke-width="1.3" marker-end="url(#arr)"/>
 
   <!-- ROI capture -->
-  <rect x="280" y="182" width="262" height="74" rx="8" fill="#ffffff" stroke="#43a047" stroke-width="1.5"/>
+  <rect x="280" y="182" width="262" height="74" fill="#ffffff" stroke="#000000" stroke-width="1.1"/>
   <text x="411" y="202" font-size="13" text-anchor="middle" font-weight="600">ROI capture (224x224 box)</text>
   <text x="411" y="219" font-size="11" text-anchor="middle">gray &#8594; invert / threshold</text>
   <text x="411" y="233" font-size="11" text-anchor="middle">&#8594; 8x8 block average &#8594; 28x28</text>
   <text x="411" y="247" font-size="11" text-anchor="middle">streamed as the pixels pass by</text>
-  <line x1="192" y1="146" x2="192" y2="219" stroke="#37474f" stroke-width="2"/>
-  <line x1="192" y1="219" x2="278" y2="219" stroke="#37474f" stroke-width="2" marker-end="url(#arr)"/>
-  <text x="200" y="176" font-size="11" fill="#37474f">same pixels (tap)</text>
-  <line x1="480" y1="182" x2="480" y2="148" stroke="#37474f" stroke-width="2" marker-end="url(#arr)"/>
-  <text x="486" y="168" font-size="11" fill="#37474f">AI view</text>
+  <line x1="192" y1="146" x2="192" y2="219" stroke="#000000" stroke-width="1.3"/>
+  <line x1="192" y1="219" x2="278" y2="219" stroke="#000000" stroke-width="1.3" marker-end="url(#arr)"/>
+  <text x="200" y="176" font-size="11" fill="#000000">same pixels (tap)</text>
+  <line x1="480" y1="182" x2="480" y2="148" stroke="#000000" stroke-width="1.3" marker-end="url(#arr)"/>
+  <text x="486" y="168" font-size="11" fill="#000000">AI view</text>
 
   <!-- ROI buffer (crosses the domains) -->
-  <rect x="640" y="190" width="104" height="58" rx="8" fill="#ffffff" stroke="#e65100" stroke-width="2"/>
+  <rect x="640" y="190" width="104" height="58" fill="#ffffff" stroke="#000000" stroke-width="1.3"/>
   <text x="692" y="212" font-size="12" text-anchor="middle" font-weight="600">ROI buffer</text>
   <text x="692" y="227" font-size="11" text-anchor="middle">2 banks, dual-clock</text>
   <text x="692" y="240" font-size="11" text-anchor="middle">block RAM</text>
-  <line x1="542" y1="219" x2="638" y2="219" stroke="#37474f" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="542" y1="219" x2="638" y2="219" stroke="#000000" stroke-width="1.3" marker-end="url(#arr)"/>
 
   <!-- CDC arrows -->
-  <line x1="692" y1="248" x2="692" y2="388" stroke="#e65100" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrC)"/>
-  <text x="702" y="300" font-size="11" fill="#e65100">frame-done toggle</text>
-  <text x="702" y="314" font-size="11" fill="#e65100">(pulse synchronizer)</text>
-  <line x1="558" y1="372" x2="558" y2="148" stroke="#e65100" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrC)"/>
-  <text x="550" y="296" font-size="11" fill="#e65100" text-anchor="end">digit + confidence (13 bits,</text>
-  <text x="550" y="310" font-size="11" fill="#e65100" text-anchor="end">req/ack handshake)</text>
+  <line x1="692" y1="248" x2="692" y2="388" stroke="#000000" stroke-width="1.3" stroke-dasharray="7 3 1 3" marker-end="url(#arrC)"/>
+  <text x="702" y="300" font-size="11" fill="#000000">frame-done toggle</text>
+  <text x="702" y="314" font-size="11" fill="#000000">(pulse synchronizer)</text>
+  <line x1="558" y1="372" x2="558" y2="148" stroke="#000000" stroke-width="1.3" stroke-dasharray="7 3 1 3" marker-end="url(#arrC)"/>
+  <text x="550" y="296" font-size="11" fill="#000000" text-anchor="end">digit + confidence (13 bits,</text>
+  <text x="550" y="310" font-size="11" fill="#000000" text-anchor="end">req/ack handshake)</text>
 
   <!-- CNN -->
-  <rect x="280" y="372" width="420" height="116" rx="10" fill="#ffffff" stroke="#1e88e5" stroke-width="2"/>
-  <text x="490" y="394" font-size="14" text-anchor="middle" font-weight="700">CNN accelerator (hand-written SystemVerilog)</text>
-  <rect x="292" y="406" width="68" height="40" rx="5" fill="#e3f2fd" stroke="#1e88e5"/>
+  <rect x="280" y="372" width="420" height="116" fill="#ffffff" stroke="#000000" stroke-width="1.3"/>
+  <text x="490" y="394" font-size="14" text-anchor="middle" font-weight="600">CNN accelerator (hand-written SystemVerilog)</text>
+  <rect x="292" y="406" width="68" height="40" fill="#ffffff" stroke="#000000"/>
   <text x="326" y="423" font-size="11" text-anchor="middle">conv 3x3</text><text x="326" y="437" font-size="11" text-anchor="middle">8 ch + pool</text>
-  <rect x="372" y="406" width="68" height="40" rx="5" fill="#e3f2fd" stroke="#1e88e5"/>
+  <rect x="372" y="406" width="68" height="40" fill="#ffffff" stroke="#000000"/>
   <text x="406" y="423" font-size="11" text-anchor="middle">conv 3x3</text><text x="406" y="437" font-size="11" text-anchor="middle">16 ch + pool</text>
-  <rect x="452" y="406" width="68" height="40" rx="5" fill="#e3f2fd" stroke="#1e88e5"/>
+  <rect x="452" y="406" width="68" height="40" fill="#ffffff" stroke="#000000"/>
   <text x="486" y="423" font-size="11" text-anchor="middle">FC 400</text><text x="486" y="437" font-size="11" text-anchor="middle">&#8594; 10</text>
-  <rect x="532" y="406" width="76" height="40" rx="5" fill="#e3f2fd" stroke="#1e88e5"/>
+  <rect x="532" y="406" width="76" height="40" fill="#ffffff" stroke="#000000"/>
   <text x="570" y="423" font-size="11" text-anchor="middle">requant +</text><text x="570" y="437" font-size="11" text-anchor="middle">argmax</text>
-  <line x1="360" y1="426" x2="371" y2="426" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="440" y1="426" x2="451" y2="426" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="520" y1="426" x2="531" y2="426" stroke="#37474f" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="360" y1="426" x2="371" y2="426" stroke="#000000" stroke-width="1.1" marker-end="url(#arr)"/>
+  <line x1="440" y1="426" x2="451" y2="426" stroke="#000000" stroke-width="1.1" marker-end="url(#arr)"/>
+  <line x1="520" y1="426" x2="531" y2="426" stroke="#000000" stroke-width="1.1" marker-end="url(#arr)"/>
   <text x="490" y="468" font-size="11" text-anchor="middle">8 parallel int8 x int8 MACs (DSP48), int32 accumulators</text>
   <text x="490" y="482" font-size="11" text-anchor="middle">weights in block RAM / ROM; 23,965 clocks = 240 &#181;s per image</text>
 
   <!-- AXI regs and ARM -->
-  <rect x="722" y="372" width="224" height="62" rx="8" fill="#ffffff" stroke="#1e88e5" stroke-width="2"/>
+  <rect x="722" y="372" width="224" height="62" fill="#ffffff" stroke="#000000" stroke-width="1.3"/>
   <text x="834" y="396" font-size="13" text-anchor="middle" font-weight="600">AXI-Lite registers + inject RAM</text>
   <text x="834" y="414" font-size="11" text-anchor="middle">enable, ROI position, invert, threshold,</text>
   <text x="834" y="427" font-size="11" text-anchor="middle">result, cycles, test-image injection</text>
-  <line x1="700" y1="402" x2="720" y2="402" stroke="#37474f" stroke-width="2" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <line x1="700" y1="402" x2="720" y2="402" stroke="#000000" stroke-width="1.3" marker-start="url(#arr)" marker-end="url(#arr)"/>
 
-  <rect x="722" y="474" width="224" height="62" rx="8" fill="#eceff1" stroke="#546e7a" stroke-width="1.5"/>
+  <rect x="722" y="474" width="224" height="62" fill="#ffffff" stroke="#000000" stroke-width="1.1"/>
   <text x="834" y="498" font-size="13" text-anchor="middle" font-weight="600">ARM Cortex-A9 (bare-metal C)</text>
   <text x="834" y="516" font-size="11" text-anchor="middle">UART 115200: prediction, FPS, tests,</text>
   <text x="834" y="529" font-size="11" text-anchor="middle">ROI capture, MNIST benchmark</text>
-  <line x1="834" y1="434" x2="834" y2="472" stroke="#37474f" stroke-width="2" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <line x1="834" y1="434" x2="834" y2="472" stroke="#000000" stroke-width="1.3" marker-start="url(#arr)" marker-end="url(#arr)"/>
 
   <!-- legend -->
-  <line x1="20" y1="612" x2="60" y2="612" stroke="#e65100" stroke-width="2" stroke-dasharray="6 4"/>
-  <text x="68" y="616" font-size="12" fill="#e65100">clock domain crossing (every crossing is synchronized, see docs/CDC.md)</text>
-  <text x="20" y="638" font-size="12" fill="#37474f">Board: Digilent Zybo Z7-10 (XC7Z010)  |  Tools: Vivado / Vitis 2025.1</text>
+  <line x1="20" y1="588" x2="60" y2="588" stroke="#000000" stroke-width="1.3" stroke-dasharray="7 3 1 3"/>
+  <text x="68" y="592" font-size="12" fill="#000000">clock domain crossing (every crossing is synchronized, see docs/CDC.md)</text>
+  <text x="20" y="614" font-size="12" fill="#000000">Board: Digilent Zybo Z7-10 (XC7Z010)  |  Tools: Vivado / Vitis 2025.1</text>
 </svg>

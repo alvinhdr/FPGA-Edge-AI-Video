@@ -116,4 +116,4 @@ Connect the laptop to the HDMI input and a monitor to the HDMI output. Open the 
 
 HDMI input/output IP: Digilent `vivado-library` (git submodule, its own license). Dataset: MNIST. Training: PyTorch.
 
-License: not chosen yet.
+License: [MIT](LICENSE). The Digilent `vivado-library` submodule and the MNIST dataset keep their own licenses.

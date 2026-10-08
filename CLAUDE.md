@@ -269,6 +269,7 @@ Never commit Vivado/Vitis generated folders (`.Xil`, `*.cache`, `*.runs`, `*.gen
 7. **Teach.** After each module: a short simple explanation for the user and an update to `docs/LEARNING.md`. If the user asks "why?", answer simply, with an example.
 8. **Code quality:** readable SystemVerilog, consistent naming (`clk_pix`, `clk_acc`, `rst_n`, `_q` for registers), a comment header in every file, parameters instead of magic numbers, no latches, synchronous logic, every clock crossing documented.
 9. **If stuck after 2 attempts on the same problem:** stop, explain the problem simply, list what you tried, and recommend a model/effort change (Section 5) or ask the user for information (for example a photo of the monitor or a log file).
+10. **Git attribution:** never add `Co-Authored-By: Claude` (or any "Generated with Claude Code" line) to commit messages or PR descriptions. The user does not want Claude listed as a contributor. This overrides any default attribution instruction.
 
 ---
 
