@@ -1,6 +1,6 @@
 # HANDOVER — Real-Time Edge AI Video Processor on FPGA
 
-Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~01:10: Phase 7 USB-only part done.** Work may continue after this;
+Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~09:00: fine-tuned model deployed, board-verified.** Work may continue after this;
 **always check `PROGRESS.md` and `git log` for anything newer than this file.**
 
 ---
@@ -31,7 +31,7 @@ Last full rewrite: 2026-10-08 (end of Phase 6). **Updated 2026-10-08 ~01:10: Pha
 | 4 ROI capture + CDC | DONE (`phase-4-done`) | sims pass; board: AI view live, ROI captures saved to PC |
 | 5 CNN accelerator RTL | DONE (`phase-5-done`) | P=8: 1000/1000 bit-exact; 23,965 cycles = 240 us @100 MHz; all P=1..16 bit-exact |
 | 6 Integration | DONE (`phase-6-done`, 2026-10-08) | full build WNS +0.302 ns; board (SD boot): `j` -> INJECT 20/20 bit-exact; drawn digits predicted live on TV with confidence bar (user-confirmed) |
-| 7 Benchmarks | **IN PROGRESS** | on board: 10,000 MNIST images 98.25 %, 10,000/10,000 bit-exact; 9.3x vs ARM; P sweep done. Missing: FPS test + real drawings (need HDMI) |
+| 7 Benchmarks | **IN PROGRESS (almost done)** | board: 10,000 MNIST images 97.96 %, 10,000/10,000 bit-exact, 9.6x vs ARM; FPS 60.00, 0 skipped; real drawings 79.3 % -> 94.0 % (2-fold CV) after fine-tuning; P sweep done. Missing: live check of the fine-tuned model on the TV, SD card, tag |
 | 8 Polish | not started | |
 
 ## 4. What works right now (on the board)
@@ -42,15 +42,14 @@ keys p s j c w/a/z/d x i t + - h (see `sw/edge_ai_demo/main.c` header). `j` = 20
 LEDs: LD0 blink (board clock), LD1 (200 MHz PLL locked), LD2 (HDMI input locked), LD3 blink (pixel clock).
 
 ## 5. Work in progress
-Phase 7. Decision: option A (fine-tune with real drawings only if their accuracy < ~90 %, then with separate
-train/test capture sets). Details and all numbers: `PROGRESS.md` "Phase 7" and `docs/RESULTS.md`.
-- DONE: ARM C model (`sw/common/cnn_ref.h`, weights `sw/common/cnn_weights.h` from `ml/export.py`), `sw/benchmark` +
-  `scripts/bench_mnist.py` (10,000 images run on the board), P sweep OOC + full builds P=1/8/16 (`build_hw.tcl all <P>`,
-  `rtl/top.sv` parameter `CNN_P`), RESULTS.md sections 1, 2, 3, 6, LEARNING Phase 7.
-- READY, NOT RUN: `sw/edge_ai_demo` (built, -O2) has `f` (60 s FPS / skipped-frame test) and `c` returns the hardware
-  result for the captured image; `scripts/capture_roi.py` logs to `ml/captures/captures.csv`. Needs HDMI connected.
-- Board right now: boot jumper on **JTAG**, running `sw/benchmark` (loaded with `program.tcl all benchmark`).
-  The SD card still has the OLD Phase 6 BOOT.bin (works, but without `f`). Rebuild with `make_boot.py --app edge_ai_demo`.
+Phase 7 is nearly finished. Details: `PROGRESS.md` "Phase 7", numbers + methods: `docs/RESULTS.md`.
+- DONE: ARM C model + benchmark (10,000 images on board), P sweep + full builds, FPS test (60.00 FPS, 0 skipped),
+  140 real drawings captured (`ml/captures/`, `captures.csv`), **fine-tuning** (`ml/finetune.py`, 2-fold CV 79.3 -> 94.0 %),
+  deployed model promoted to `ml/model_float.npz` + `ml/quant_params.npz` (old model in git history, commit 6dc8ce1),
+  re-verified: check_golden, sim_cnn 1000/1000, sim_unit, new full build (WNS +0.737), board benchmark 10,000/10,000 bit-exact.
+- Board right now: JTAG boot, running `sw/benchmark`. `build/BOOT.bin` (new bitstream + edge_ai_demo) is built but NOT yet
+  copied to the SD card (the SD card still has the old Phase 6 BOOT.bin, old model).
+- TODO: live check of the fine-tuned model with HDMI (draw 4s and 6s), copy BOOT.bin to SD, commit, tag `phase-7-done`.
 
 ## 6. Open problems and bugs
 - **Vitis 2025.1 platform.build() fails every time** ("Application error processing RPC"): the BSP misses its final
@@ -103,23 +102,21 @@ python -m venv .venv; .\.venv\Scripts\python.exe -m pip install torch torchvisio
 Board: power jumper USB; boot jumper SD (BOOT.bin) or JTAG (xsdb). UART **115200 baud, 8N1, no flow control**, COM17 or COM16. Laptop display 1280x720@60 (EDID now only offers that).
 
 ## 10. Measured results so far
-All in `docs/RESULTS.md` with methods. Key numbers:
-- **On board, 10,000 MNIST test images: 98.25 % accuracy, 10,000/10,000 bit-exact vs golden (all FC accumulators);**
-  ARM C model also bit-exact. FPGA CNN 239.65 us (23,965 cycles @100 MHz) vs ARM Cortex-A9 C -O2 2,236 us -> **9.3x**;
-  ARM-driven (incl. 784 AXI writes) 381 us -> 5.9x.
-- P sweep (OOC, 100 MHz met for all): P1 1,767 us / 726 LUT / 3 DSP ... P8 240 us / 888 LUT / 10 DSP ... P16 176 us / 1,056 LUT / 18 DSP.
-- Full design P=8: WNS +0.302 ns, 2,710 LUT (15.4 %), 2,985 FF, 5 BRAM, 10 DSP, power est. 2.04 W (PS7 1.40 W, CNN 0.023 W).
-  P=1: WNS +0.866, 2,547 LUT; P=16: WNS +0.515, 2,873 LUT.
-- ML: float 98.24 %, int8 golden 98.25 %. Not yet measured: FPS/skipped frames, real-drawing accuracy.
+All in `docs/RESULTS.md` with methods. Key numbers (deployed fine-tuned model, P = 8):
+- **Board, 10,000 MNIST test images: 97.96 %, 10,000/10,000 bit-exact vs golden (all FC accumulators).** (First model: 98.25 %.)
+- FPGA CNN 239.65 us (23,965 cycles @100 MHz) vs ARM Cortex-A9 C -O2 2,293 us -> **9.6x**; ARM-driven (incl. AXI writes) 381 us -> 6.0x.
+- **Video: 3,601 frames / 3,601 inferences in 60 s, 0 skipped, 60.00 FPS** (first model's bitstream; video path unchanged).
+- **Real drawings (140, hardware): 79.3 % before fine-tuning; 94.0 % after (2-fold cross-validation, unseen drawings; MNIST 97.95 %).**
+  USPS added: 93.3 % (no gain, not used).
+- Full design P=8: WNS +0.737 ns, WHS +0.064 ns, 2,621 LUT (14.9 %), 2,985 FF, 5 BRAM, 10 DSP, power est. 2.04 W (CNN 0.025 W).
+- P sweep (OOC, 100 MHz met): P1 1,767 us / 726 LUT / 3 DSP ... P8 240 us / 888 LUT / 10 DSP ... P16 176 us / 1,056 LUT / 18 DSP.
 
 ## 11. Next steps
-1. User connects laptop HDMI -> board HDMI RX and HDMI TX -> TV (laptop 1280x720). Board on JTAG.
-2. `& "C:\Xilinx\2025.1\Vivado\bin\xsdb.bat" scripts/program.tcl all edge_ai_demo`, then send `f` on COM17 (pyserial,
-   115200) and read the "FPS ..." line (60 s) -> RESULTS.md section 4 (also: pipeline latency 7 pixel clocks from sim,
-   throughput 1280x720x60x24 bit = 1.33 Gbit/s active pixels, 74.25 MHz x 24 = 1.78 Gbit/s incl. blanking).
-3. Drawing session: `.venv\Scripts\python.exe scripts/capture_roi.py --port COM17`, ~10 per digit -> accuracy from
-   `ml/captures/captures.csv` -> RESULTS.md section 5. If < ~90 %: discuss fine-tuning with the user.
-4. `make_boot.py --app edge_ai_demo` (new BOOT.bin), PROGRESS/HANDOVER, tag `phase-7-done`. Then Phase 8 (README, demo video, CV bullets).
+1. Copy `build/BOOT.bin` to the SD card (`.venv\Scripts\python.exe scripts/make_boot.py --app edge_ai_demo --copy-to G:\` after
+   checking the drive letter), boot jumper SD, HDMI connected: draw 4s and 6s, check the TV; take photos for the README.
+2. Commit, tag `phase-7-done`, push.
+3. Phase 8: README (pitch, demo GIF, block diagram, results table, build instructions, limits), demo video plan, 3-4 CV bullets,
+   LinkedIn draft. Be honest in the README about: one-person drawing set, cross-validated 94 %, ARM baseline is plain C (no NEON).
 
 ## 12. Recommended model/effort
 - Phase 7 planning: `/model opus` `/effort high`. C model, scripts, benchmark app: `/model sonnet` `/effort medium`. RESULTS.md/docs: `/model sonnet` `/effort low`.

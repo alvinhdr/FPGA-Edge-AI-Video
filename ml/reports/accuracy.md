@@ -2,11 +2,11 @@
 
 | Test set | Float model | Integer golden model | Float/int same prediction |
 |---|---|---|---|
-| MNIST test set (clean), 10,000 images | 98.24 % | 98.25 % | 99.90 % |
-| MNIST test set, augmented (shift/rotate/scale/thickness/background), 10,000 images | 90.88 % | 90.76 % | 99.52 % |
+| MNIST test set (clean), 10,000 images | 97.94 % | 97.96 % | 99.85 % |
+| MNIST test set, augmented (shift/rotate/scale/thickness/background), 10,000 images | 90.06 % | 89.91 % | 99.30 % |
 
-- L1 outputs at 255 (saturated): 0.0000 %, L2 at 255: 0.0000 %, L1 at 0 (ReLU): 50.5 %
-- Mean confidence value on the clean test set: 227.4 / 255
-- Requantization: M1=20725 S1=23, M2=20000 S2=23, Mc=26807 Sc=21
+- L1 outputs at 255 (saturated): 0.0000 %, L2 at 255: 0.0000 %, L1 at 0 (ReLU): 50.2 %
+- Mean confidence value on the clean test set: 221.8 / 255
+- Requantization: M1=20888 S1=23, M2=21182 S2=23, Mc=25098 Sc=21
 
 The augmented row is a synthetic stress test, not real camera data. Accuracy on real captured ROI images (Phase 4) and on the board (Phase 7) is reported separately.

@@ -129,7 +129,7 @@ static void fps_test(void)
     u64 ticks = t1 - t0;
     u32 mfps = (u32)(((u64)frames * 1000u * TIMER_HZ + ticks / 2) / ticks);   /* frames/s x 1000 */
     xil_printf("FPS frames=%u inferences=%u skipped=%d time_us=%u fps_x1000=%u\r\n",
-               frames, infers, (int)(frames - infers), (u32)(ticks / (TIMER_HZ / 1000000u)), mfps);
+               frames, infers, (int)(frames - infers), (u32)(ticks * 1000000u / TIMER_HZ), mfps);
 }
 
 /* Classify one 28x28 image with the hardware CNN through the inject RAM. */

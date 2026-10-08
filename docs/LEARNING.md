@@ -112,7 +112,7 @@ A: It is the specification. The Python golden model and the hardware both implem
 - **Independent cross-check**: `ml/check_golden.py` implements the same spec a second way (PyTorch) and requires identical layer outputs. Two separate implementations agreeing makes a shared bug very unlikely.
 - **Test vectors**: input image + every layer output from the golden model, stored as `.mem` files. The Phase 5 testbenches read them and compare.
 
-**Q: Your int8 model has 98.25 % and the float model 98.24 %. Did quantization really lose nothing?**
+**Q: Your int8 model has 98.25 % and the float model 98.24 %. Did quantization really lose nothing?** (numbers of the first model, before the Phase 7 fine-tuning)
 A: On the 10,000 MNIST test images, int8 and float give the same answer for 99.9 % of images; the 0.01 % difference is noise (a few images flip in both directions). I also checked that no activation saturates at 255, so the activation scale is not clipping anything.
 
 **Q: How do you know the golden model itself is right?**
@@ -211,3 +211,21 @@ A: From 8 to 16 MACs the speed only goes up 1.36×, but the DSPs almost double (
 
 **Q: You found a bug in your own benchmark. What was it?**
 A: Two. First, the ARM timer always read 0: the board support library starts the global timer only on the first sleep call, and my benchmark never slept — I found it by reading the library source. Second, Vitis compiles with -O0 by default, which would have made the ARM much slower and my speedup look better than it really is. I set -O2 and print in the benchmark whether the code was optimized.
+
+## Fine-tuning and honest testing (Phase 7)
+
+- **Domain gap**: the model learned from one kind of data (MNIST) but is used on another (digits drawn with a mouse on a screen). Accuracy drops: 98 % on MNIST, 79 % on my real drawings.
+- **Fine-tuning**: continue training an already trained model for a short time on new data, with a small learning rate. The architecture and the hardware stay the same; only the weights change.
+- **Catastrophic forgetting**: if you fine-tune only on the new data, the model can forget the old data. We mix MNIST into every training step to prevent it.
+- **Cross-validation (2-fold)**: split the data in two halves; train on one half, test on the other; swap; average. Every test image is one the model did not train on, and all data is used.
+- **Data leakage**: testing on data that was also used for training makes the accuracy look better than it is. The final model (trained on all 140 drawings) scores 100 % on those drawings — that number is meaningless, so I report the cross-validated 94 % instead.
+- **Why a weight change needs no new RTL design but still needs a rebuild**: the weights are in ROM files baked into the bitstream, so after fine-tuning I re-exported them, re-ran the bit-exact simulation (1000/1000), rebuilt, re-checked timing, and re-ran the 10,000-image test on the board.
+
+**Q: Your accuracy on real input was lower than on the test set. What did you do?**
+A: I measured it first: 79.3 % on 140 digits I drew in Paint, captured from the live video and classified by the hardware. The golden model gave identical answers, so it was a data problem, not a hardware bug: for example 4s with a closed top were read as 9, and 6s with a small loop as 5. I fine-tuned the model on the drawings mixed with MNIST. With 2-fold cross-validation, accuracy on unseen drawings went from 79.3 % to 94.0 %, and MNIST accuracy dropped only from 98.25 % to 97.96 %.
+
+**Q: Is 94 % a fair number?**
+A: It is a cross-validated estimate, so the test drawings were not used for training, but I say its limits: one person, one drawing tool, 140 images, same session. A new writer would probably get less. I also tried adding the public USPS digit set; it did not help (93.3 %), so I left it out.
+
+**Q: You changed the weights late in the project. How did you keep the hardware correct?**
+A: The golden model is the specification and every step is automatic: export the new weights, run the independent PyTorch cross-check, rerun the RTL simulation on 1,000 test images against the golden model (0 mismatches), rebuild (timing still met), and run all 10,000 MNIST test images on the board again (bit-exact).

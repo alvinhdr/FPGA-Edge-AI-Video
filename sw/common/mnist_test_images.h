@@ -29,6 +29,6 @@ static const unsigned char mnist_img[20][784] = {
 };
 static const unsigned char mnist_label[20]        = {7,2,1,0,4,1,4,9,5,9,0,6,9,0,1,5,9,7,3,4};
 static const unsigned char mnist_golden_digit[20] = {7,2,1,0,4,1,4,9,5,9,0,6,9,0,1,5,9,7,3,4};
-static const unsigned char mnist_golden_conf[20]  = {255,255,255,255,255,255,214,129,255,231,255,255,255,255,255,168,247,255,97,255};
+static const unsigned char mnist_golden_conf[20]  = {255,238,255,225,255,255,255,73,157,202,255,255,255,255,255,195,255,255,108,255};
 
 #endif

@@ -76,6 +76,9 @@ def ascii_art(img):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", required=True, help="board UART, e.g. COM17")
+    ap.add_argument("--out", default=OUT_DIR, metavar="DIR",
+                    help="folder for the PNGs and captures.csv (default ml/captures; use ml/captures_test "
+                         "for a fresh test set that is never used for training)")
     ap.add_argument("--once", default=None, metavar="LABEL",
                     help="capture one image and exit; LABEL 0-9 saves it, 'x' only shows it")
     args = ap.parse_args()
@@ -87,7 +90,9 @@ def main():
         print("(golden model not available:", e, ")")
         golden_int, q = None, None
 
-    os.makedirs(OUT_DIR, exist_ok=True)
+    out_dir = os.path.abspath(args.out)
+    csv_path = os.path.join(out_dir, "captures.csv")
+    os.makedirs(out_dir, exist_ok=True)
     with serial.Serial(args.port, 115200, timeout=0.1) as ser:
         ser.write(b"s")
         print(read_line(ser))
@@ -116,15 +121,15 @@ def main():
                 print(f"  HARDWARE CNN predicts {hw[0]} (confidence {hw[1]}/255), {same}")
             if cmd.isdigit() and len(cmd) == 1:
                 name = f"{cmd}_{time.strftime('%Y%m%d_%H%M%S')}.png"
-                Image.fromarray(img).save(os.path.join(OUT_DIR, name))
-                new = not os.path.exists(CSV_PATH)
-                with open(CSV_PATH, "a", newline="") as fh:
+                Image.fromarray(img).save(os.path.join(out_dir, name))
+                new = not os.path.exists(csv_path)
+                with open(csv_path, "a", newline="") as fh:
                     w = csv.writer(fh)
                     if new:
                         w.writerow(["file", "label", "hw_digit", "hw_conf", "golden_digit", "golden_conf"])
                     w.writerow([name, int(cmd), *(hw or ("", "")), *(gold or ("", ""))])
                 ok = "CORRECT" if hw is not None and hw[0] == int(cmd) else "wrong" if hw is not None else ""
-                print(f"  saved ml/captures/{name}  {ok}")
+                print(f"  saved {os.path.relpath(out_dir, ROOT)}/{name}  {ok}")
             if args.once is not None:
                 break
 

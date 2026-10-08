@@ -182,13 +182,21 @@ then with separate train/test capture sets.
   - `rtl/top.sv` parameter `CNN_P` (default 8); `build_hw.tcl all <P>` (P != 8 -> build/p<P>/). Full builds:
     P=1 WNS +0.866, 2547 LUT, 3 DSP; P=8 +0.302, 2710, 10; P=16 +0.515, 2873, 18. Power est. 2.028/2.038/2.054 W.
   - `docs/RESULTS.md` sections 1, 2, 3, 6 written. LEARNING Phase 7 section.
-- **Ready but not yet run (need HDMI laptop -> board -> TV):** `sw/edge_ai_demo` rebuilt (-O2) with
-  `f` = 60 s FPS test (frames, inferences, skipped, fps x1000) and `c` now also returns the HARDWARE result
-  for the captured image ("ROI <hex> HW d c"); `scripts/capture_roi.py` logs saved captures to `ml/captures/captures.csv`.
+- **FPS test DONE (board, HDMI, 60 s): 3,601 frames, 3,601 inferences, 0 skipped, 60.00 FPS.** RESULTS.md section 4.
+- **Real drawings (140 captures in `ml/captures/`, user-drawn in Paint, `captures.csv`): hardware 79.3 % (111/140),
+  hw == golden on all 140; weak: 4 (->9), 6 (->5/8).** Below the 90 % line -> fine-tuning (user chose option A, then did
+  not want to draw a second test set -> 2-fold cross-validation on the 140 instead).
+- **Fine-tuning (`ml/finetune.py`, `cv` and `final` modes):** 2-fold CV, 3 seeds, 1,200 steps: **79.3 % -> 94.0 %** on unseen
+  drawings, MNIST 98.25 -> 97.95 %. Adding USPS (downloaded 2026-10-08 from csie.ntu.edu.tw LIBSVM, in git-ignored `ml/data/`):
+  93.3 %, no gain, not used. Final model trained on all 140 (MNIST int 97.96 %), promoted to `ml/model_float.npz` /
+  `ml/quant_params.npz` (old ones are in git history, commit 6dc8ce1). New constants M1=20888 M2=21182 Mc=25098 (S unchanged).
+  Re-done after the change: check_golden bit-exact (2000), `sim_cnn.py --p 8 --n 1000` 0 mismatches (982/1000 correct),
+  sim_unit ALL PASS (incl. tb_ai_core), full build **WNS +0.737 ns, WHS +0.064**, 2,621 LUT, 2,985 FF, 5 BRAM, 10 DSP,
+  2.040 W; ARM apps rebuilt; board 100-image check bit-exact; 10,000-image rerun in progress/see RESULTS.md.
+- Not redone for the new weights (they do not depend on the weights): P=1/16 full builds, OOC sweep numbers (RESULTS.md says so).
 
 ## Next step
-1. User: connect laptop HDMI -> board HDMI RX and board HDMI TX -> TV (laptop 1280x720). Board still on JTAG.
-2. Claude: `xsdb.bat scripts/program.tcl all edge_ai_demo`; send `f` over COM17 (pyserial) -> FPS / skipped frames.
-3. Drawing session: `scripts/capture_roi.py --port COM17`, ~10 captures per digit -> real-drawing accuracy (hardware).
-4. RESULTS.md sections 4 + 5; README-ready numbers; PROGRESS/HANDOVER; tag phase-7-done.
-5. Later: rebuild BOOT.bin (`make_boot.py --app edge_ai_demo`) so the SD card has the new app.
+1. Finish: 10,000-image board rerun with the fine-tuned model -> RESULTS.md sections 1, 2 (replace/add), HANDOVER.
+2. `make_boot.py --app edge_ai_demo` -> new BOOT.bin for the SD card (user copies; boot jumper SD).
+3. Live demo check with HDMI: draw 4s and 6s; take photos for the README. Commit, tag `phase-7-done`.
+4. Phase 8: README, demo video, CV bullets.
